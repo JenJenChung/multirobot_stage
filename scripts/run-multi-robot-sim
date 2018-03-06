@@ -1,0 +1,30 @@
+#!/bin/bash
+
+my_pid=$$
+echo "My process ID is $my_pid"
+
+echo "Launching roscore..."
+roscore &
+pid=$!
+
+echo "Launching Stage..."
+sleep 2s
+roslaunch multirobot_stage multirobot_stage.launch &
+pid="$pid $!"
+
+echo "Launching navigation stack..."
+sleep 2s
+for i in `seq 0 1`;
+do
+  roslaunch nav_bundle single_slam.launch robot_name:=robot_$i &
+  pid="$pid $!"
+  sleep 2s
+  
+  roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
+  pid="$pid $!"
+  sleep 2s
+done
+
+trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
+
+sleep 24h
