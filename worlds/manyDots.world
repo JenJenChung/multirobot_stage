@@ -31,7 +31,7 @@ define pedestrian position
   gui_nose 0
   drive "diff"
   localization "odom"
-  topurg(pose [ 0.000 0.000 0 0.000 ])
+  topurg(pose [ 0.000 0.000 -0.2 0.000 ])
   odom_error [0.00 0.00 0.00 0.00 0.00 0.00]
 )
 

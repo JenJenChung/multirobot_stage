@@ -9,14 +9,14 @@ pid=$!
 
 echo "Launching Stage..."
 sleep 2s
-roslaunch multirobot_stage multirobot_stage.launch world_file:=manyDots &
+roslaunch multirobot_stage multirobot_stage.launch world_file:=manyDots rviz_config:=robot_pedestrian_stage &
 pid="$pid $!"
 
 echo "Loading initialisation parameters..."
 rosparam load $(rospack find multirobot_stage)/scripts/initial_poses.yaml &
 
 echo "Launching map server..."
-roslaunch nav_bundle map_server_scout.launch &
+roslaunch nav_bundle map_server_stage.launch &
 pid="$pid $!"
 
 echo "Launching navigation stack..."
@@ -27,6 +27,10 @@ do
   pid="$pid $!"
   sleep 2s
 done
+
+echo "Launching pedestrian bounce controller..."
+roslaunch multirobot_stage bouncer.launch ns:=robot_1 &
+pid="$pid $!"
 
 trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
 

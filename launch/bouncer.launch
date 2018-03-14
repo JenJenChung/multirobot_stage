@@ -1,0 +1,8 @@
+<launch>
+  <arg name="ns" default="/"/>
+  <!-- Launch world -->
+  <node pkg="multirobot_stage" type="bouncer" name="bouncer" ns="$(arg ns)">
+    <param name="distance_threshold" value="2.0"/>
+    <param name="forward_velocity" value="5.0"/>
+  </node>
+</launch>
