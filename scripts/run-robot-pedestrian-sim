@@ -1,0 +1,33 @@
+#!/bin/bash
+
+my_pid=$$
+echo "My process ID is $my_pid"
+
+echo "Launching roscore..."
+roscore &
+pid=$!
+
+echo "Launching Stage..."
+sleep 2s
+roslaunch multirobot_stage multirobot_stage.launch world_file:=manyDots &
+pid="$pid $!"
+
+echo "Loading initialisation parameters..."
+rosparam load $(rospack find multirobot_stage)/scripts/initial_poses.yaml &
+
+echo "Launching map server..."
+roslaunch nav_bundle map_server_scout.launch &
+pid="$pid $!"
+
+echo "Launching navigation stack..."
+sleep 2s
+for i in `seq 0 1`;
+do
+  roslaunch nav_bundle single_navigation_stage.launch robot_name:=robot_$i x:="$(rosparam get /robot_$i/x)" y:="$(rosparam get /robot_$i/y)" yaw:="$(rosparam get /robot_$i/a)" &
+  pid="$pid $!"
+  sleep 2s
+done
+
+trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
+
+sleep 24h
