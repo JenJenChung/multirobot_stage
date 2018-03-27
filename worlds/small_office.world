@@ -65,5 +65,5 @@ floorplan
 
 # throw in a couple of robots
 # ROS will automatically assign tf_prefixes of robot_0, robot_1,...
-erratic( pose [ 0.000 0.000 0 90.000 ] name "alice" color "blue" localizaion "gps" localization_origin [0 0 0 0])
-erratic( pose [ 0.000 -10.000 0 90.000 ] name "bob" color "red" localizaion "gps" localization_origin [0 0 0 0])
+erratic( pose [ 0.000 0.000 0 90.000 ] name "alice" color "blue" localization "gps" localization_origin [0 0 0 0])
+erratic( pose [ 0.000 -10.000 0 90.000 ] name "bob" color "red" localization "gps" localization_origin [0 0 0 0])

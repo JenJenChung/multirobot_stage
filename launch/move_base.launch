@@ -1,0 +1,11 @@
+<launch>
+  <arg name="robot_name" default="/"/>
+  
+  <!-- Make sure initial pose matches $(find pioneer_description)/launch/pioneers.launch arg init_pose -->
+  <group ns="$(arg robot_name)">
+    <param name="tf_prefix" value="$(arg robot_name)"/> 
+    <include file="$(find stagebot_2dnav)/move_base.launch"/>
+    <node pkg="simple_navigation_goals" type="map_navigation_client" name="map_goal_client" output="screen"/>
+<!--    <include file="$(find pioneer_ros)/launch/pioneer_controller_spin_recover.launch"/>-->
+  </group>
+</launch>

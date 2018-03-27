@@ -6,20 +6,20 @@ echo "My process ID is $my_pid"
 echo "Launching roscore..."
 roscore &
 pid=$!
-sleep 2s
 
 echo "Launching Stage..."
+sleep 2s
 roslaunch multirobot_stage multirobot_stage.launch &
+pid="$pid $!"
+
+echo "Launching navigation stack..."
+sleep 2s
+roslaunch ohm_tsd_slam multi_slam_asl.launch &
 pid="$pid $!"
 sleep 2s
 
-echo "Launching navigation stack..."
 for i in `seq 0 1`;
 do
-  rosrun cg_mrslam cg_mrslam -idRobot $i -nRobots 2 -scanTopic base_scan -mapFrame /robot_$i/map -odomFrame /robot_$i/odom -baseFrame /robot_$i/base_link -modality real -publishMap -publishGraph -o testmrslam.g2o __ns:=robot_$i &
-  pid="$pid $!"
-  sleep 10s
-
   roslaunch multirobot_stage move_base.launch robot_name:=robot_$i &
   pid="$pid $!"
   sleep 2s
@@ -28,6 +28,10 @@ do
   pid="$pid $!"
   sleep 2s
 done
+
+rosservice call /start_stop_slam /robot_0/base_scan 1
+
+rosservice call /start_stop_slam /robot_1/base_scan 1
 
 trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
 
