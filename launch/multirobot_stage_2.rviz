@@ -26,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Robot0_laser
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -72,17 +72,17 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Robot0_local_costmap
       Topic: /robot_0/move_base/local_costmap/costmap
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 0; 255; 255
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.300000012
       Head Length: 0.200000003
       Length: 0.300000012
@@ -100,7 +100,7 @@ Visualization Manager:
       Shaft Length: 0.100000001
       Topic: /robot_0/move_base/NavfnROS/plan
       Unreliable: false
-      Value: true
+      Value: false
     - Angle Tolerance: 0.100000001
       Class: rviz/Odometry
       Covariance:
@@ -118,7 +118,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 1
       Name: Robot0_odom
       Position Tolerance: 0.100000001
@@ -134,7 +134,7 @@ Visualization Manager:
         Value: Arrow
       Topic: /robot_0/odom
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -170,7 +170,7 @@ Visualization Manager:
       Axes Radius: 0.100000001
       Class: rviz/Pose
       Color: 0; 0; 127
-      Enabled: true
+      Enabled: false
       Head Length: 0.300000012
       Head Radius: 0.300000012
       Name: Robot0_goal
@@ -179,27 +179,27 @@ Visualization Manager:
       Shape: Arrow
       Topic: /robot_0/move_base/current_goal
       Unreliable: false
+      Value: false
+    - Alpha: 0.699999988
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Robot1_map
+      Topic: /robot_1/map
+      Unreliable: false
+      Use Timestamp: false
       Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: false
-      Name: Robot1_map
-      Topic: /robot_1/map
-      Unreliable: false
-      Use Timestamp: false
-      Value: false
-    - Alpha: 0.699999988
-      Class: rviz/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Robot1_global_costmap
       Topic: /robot_1/move_base/global_costmap/costmap
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: map
@@ -279,7 +279,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 1
@@ -296,7 +296,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.100000001
@@ -366,7 +366,7 @@ Visualization Manager:
       Axes Radius: 0.00999999978
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.0700000003
       Head Radius: 0.0299999993
       Name: Robot0_trajectory
@@ -375,7 +375,7 @@ Visualization Manager:
       Shape: Arrow (Flat)
       Topic: /robot_0/trajectory
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Arrow Length: 0.300000012
       Axes Length: 0.300000012
@@ -404,7 +404,7 @@ Visualization Manager:
       Color: 0; 0; 255
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -421,7 +421,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -477,16 +477,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 49.670433
+      Distance: 44.7944603
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.720309198
-        Y: -4.99316025
-        Z: -0.00499039935
+        X: 18.7356377
+        Y: -4.26558495
+        Z: -3.94610858
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
