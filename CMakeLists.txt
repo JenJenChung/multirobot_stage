@@ -13,8 +13,9 @@ find_package(catkin REQUIRED COMPONENTS
   stage_ros
   geometry_msgs
   sensor_msgs
+  nav_msgs
 )
-
+find_package(Eigen3 REQUIRED)
 
 catkin_package()
 
@@ -25,3 +26,9 @@ include_directories(
 add_executable(bouncer src/bouncer.cpp)
 target_link_libraries(bouncer ${catkin_LIBRARIES})
 add_dependencies(bouncer ${catkin_EXPORTED_TARGETS})
+
+add_executable(map2polar src/map2polar.cpp)
+target_link_libraries(map2polar
+                      ${catkin_LIBRARIES}
+                      ${Eigen3_LIBRARIES}
+                      m)

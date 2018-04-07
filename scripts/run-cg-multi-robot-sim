@@ -16,7 +16,7 @@ sleep 2s
 echo "Launching navigation stack..."
 for i in `seq 0 1`;
 do
-  rosrun cg_mrslam cg_mrslam -idRobot $i -nRobots 2 -baseAddr 127.0.0. -scanTopic base_scan -mapFrame /robot_$i/map -odomFrame /robot_$i/odom -baseFrame /robot_$i/base_link -modality sim -publishMap -publishGraph -o testmrslam.g2o __ns:=robot_$i &
+  rosrun cg_mrslam cg_mrslam -idRobot $i -nRobots 2 -baseAddr 127.0.0. -scanTopic base_scan -mapFrame /robot_$i/map -odomFrame /robot_$i/odom -baseFrame /robot_$i/base_link -modality sim -publishMap -publishGraph -angularUpdate 0.785 -resolution 0.025 -inlierThreshold 2. -maxScore 0.5 -minInliers 7 -linearUpdate 0.25 __ns:=robot_$i &
   pid="$pid $!"
   sleep 2s
   
