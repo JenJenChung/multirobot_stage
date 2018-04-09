@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   rviz
   stage_ros
+  std_msgs
   geometry_msgs
   sensor_msgs
   nav_msgs
