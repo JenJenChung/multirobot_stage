@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   stage_ros
   geometry_msgs
   sensor_msgs
+  tf
+  costmap_2d
 )
 
 
@@ -25,3 +27,7 @@ include_directories(
 add_executable(bouncer src/bouncer.cpp)
 target_link_libraries(bouncer ${catkin_LIBRARIES})
 add_dependencies(bouncer ${catkin_EXPORTED_TARGETS})
+
+add_executable(robot_map src/robot_costmap.cpp)
+target_link_libraries(robot_map ${catkin_LIBRARIES})
+add_dependencies(robot_map ${catkin_EXPORTED_TARGETS})

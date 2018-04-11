@@ -1,0 +1,8 @@
+<launch>
+  <group ns="robot_0">
+    <node pkg="multirobot_stage" type="robot_map" respawn="false" name="robot_map" output="screen">
+      <rosparam file="$(find multirobot_stage)/launch/robot_costmap_params.yaml" command="load" ns="robot_map"/>
+      <remap from="map" to="/map"/>
+    </node>
+  </group>
+</launch>
