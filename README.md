@@ -9,6 +9,8 @@ Available through apt-get:
 <li> <a href="http://wiki.ros.org/move_base">move_base</a> </li>
 <li> <a href="http://wiki.ros.org/stage_ros">stage_ros</a> </li>
 <li> <a href="http://wiki.ros.org/rviz">rviz</a> </li>
+<li> <a href="http://wiki.ros.org/amcl">amcl</a> </li>
+<li> <a href="http://wiki.ros.org/map_server">map_server</a> </li>
 </ul>
 
 Available on github:
