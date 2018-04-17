@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   nav_msgs
+  tf
+  costmap_2d
 )
 find_package(Eigen3 REQUIRED)
 
@@ -39,3 +41,6 @@ target_link_libraries(action_node
                       ${catkin_LIBRARIES}
                       ${Eigen3_LIBRARIES}
                       m)
+add_executable(robot_map src/robot_costmap.cpp)
+target_link_libraries(robot_map ${catkin_LIBRARIES})
+add_dependencies(robot_map ${catkin_EXPORTED_TARGETS})
