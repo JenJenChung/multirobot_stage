@@ -21,7 +21,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package()
 
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS} src
 )
 
 add_executable(bouncer src/bouncer.cpp)
@@ -30,6 +30,12 @@ add_dependencies(bouncer ${catkin_EXPORTED_TARGETS})
 
 add_executable(map2polar src/map2polar.cpp)
 target_link_libraries(map2polar
+                      ${catkin_LIBRARIES}
+                      ${Eigen3_LIBRARIES}
+                      m)
+
+add_executable(action_node src/action_node.cpp)
+target_link_libraries(action_node
                       ${catkin_LIBRARIES}
                       ${Eigen3_LIBRARIES}
                       m)
