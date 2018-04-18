@@ -1,0 +1,2 @@
+learning:
+  episode_length: 30.0 # length of each episode in seconds

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# =========== START ROS simulation nodes =========== 
+echo "Launching Stage..."
+sleep 2s
+roslaunch multirobot_stage multirobot_stage.launch &
+pid=$!
+
+echo "Launching navigation stack..."
+sleep 2s
+for i in `seq 0 1`;
+do
+  roslaunch nav_bundle single_slam.launch robot_name:=robot_$i &
+  pid="$pid $!"
+  sleep 2s
+  
+  roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
+  pid="$pid $!"
+  sleep 2s
+done
+
+roslaunch multirobot_stage multirobot_map_merge.launch &
+pid="$pid $!"
+# =========== END ROS simulation nodes =========== 
+
+echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt
+
+# =========== START Learning epoch timer ===========
+rosparam load $(rospack find multirobot_stage)/scripts/learning_params.yaml
+rosrun multirobot_stage learning_episode_timer &

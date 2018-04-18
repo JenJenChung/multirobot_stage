@@ -44,3 +44,7 @@ target_link_libraries(action_node
 add_executable(robot_map src/robot_costmap.cpp)
 target_link_libraries(robot_map ${catkin_LIBRARIES})
 add_dependencies(robot_map ${catkin_EXPORTED_TARGETS})
+
+add_executable(learning_episode_timer src/learning_episode_timer.cpp)
+target_link_libraries(learning_episode_timer ${catkin_LIBRARIES})
+add_dependencies(learning_episode_timer ${catkin_EXPORTED_TARGETS})

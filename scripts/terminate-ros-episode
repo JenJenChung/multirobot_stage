@@ -1,0 +1,6 @@
+#!/bin/bash
+pid=$(<~/catkin_ws/src/multirobot_stage/scripts/pid.txt)
+
+echo "$pid"
+
+kill -2 TERM $pid
