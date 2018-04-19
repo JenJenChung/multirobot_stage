@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   tf
+  eigen_conversions
   costmap_2d
 )
 find_package(Eigen3 REQUIRED)

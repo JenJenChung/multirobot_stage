@@ -2,11 +2,8 @@
 
 void callback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     ROS_INFO("received map");
-    geometry_msgs::Pose2D robot;
-    robot.x = 0;
-    robot.y = 0;
-    robot.theta = 0;
-    Eigen::MatrixXd coff = map2polar(*msg, robot);
+    nav_msgs::Odometry robot;
+    Eigen::MatrixXd coff = mapToPolar(*msg, &robot, 0, 1);
     ROS_INFO("map converted");
     std::cout << coff << std::endl;
 }
