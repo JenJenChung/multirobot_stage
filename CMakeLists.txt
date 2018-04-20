@@ -38,8 +38,8 @@ add_executable(bouncer src/bouncer.cpp)
 target_link_libraries(bouncer ${catkin_LIBRARIES})
 add_dependencies(bouncer ${catkin_EXPORTED_TARGETS})
 
-add_executable(map2polar src/map2polar.cpp)
-target_link_libraries(map2polar
+add_executable(conversion_tester src/conversion_tester.cpp)
+target_link_libraries(conversion_tester
                       ${catkin_LIBRARIES}
                       ${Eigen3_LIBRARIES}
                       m)
