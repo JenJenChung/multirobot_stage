@@ -14,7 +14,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "learning_episode_timer") ;
   ros::NodeHandle nh ;
 
-//  double ep = 30.0 ;
+  double ep;
   ros::param::get("learning/episode_length",ep) ;
 
   ros::Timer timer = nh.createTimer(ros::Duration(ep), shutdownCallback, true) ;
