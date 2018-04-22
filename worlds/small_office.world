@@ -45,6 +45,9 @@ resolution 0.005
 
 interval_sim 50  # simulation timestep in milliseconds
 
+speedup 2 # order of magnitude speedup
+
+threads 4 # multithread
 
 window
 ( 

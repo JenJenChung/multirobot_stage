@@ -1,17 +1,30 @@
 # include <ros/ros.h>
 # include <math.h>
 # include <algorithm> 
-# include <std_msgs/Int8.h>
 # include <nav_msgs/OccupancyGrid.h>
+# include <nav_msgs/Odometry.h>
 # include <geometry_msgs/Pose2D.h>
 # include <geometry_msgs/Twist.h>
 # include <Eigen/Dense>
-//#, OpenCV?, 
+# include <eigen_conversions/eigen_msg.h>
 
-Eigen::MatrixXd map2polar(const nav_msgs::OccupancyGrid &map, geometry_msgs::Pose2D robot, int n_th=4, double thresh=50){
-    Eigen::MatrixXd coff = Eigen::MatrixXd::Zero(n_th,3);
+geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
+    geometry_msgs::Pose2D pose;
+    pose.x = odom.pose.pose.position.x;
+    pose.y = odom.pose.pose.position.y;
+    Eigen::Quaterniond quat;
+    tf::quaternionMsgToEigen(odom.pose.pose.orientation, quat);
+    Eigen::Vector3d euler = quat.toRotationMatrix().eulerAngles(2,1,0);
+    pose.theta = euler[0];
+    return pose;
+}
+
+
+Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometry *odoms, int robot_id, int nRobots, int n_th=4, double thresh=50){
+    Eigen::MatrixXd coff = Eigen::MatrixXd::Zero(n_th,2+nRobots);
     double res = map.info.resolution;
     geometry_msgs::Point origin = map.info.origin.position;
+    geometry_msgs::Pose2D robot = odomToPose2D(odoms[robot_id]);
     int i = 0;
     for (double theta = 0; theta<2*M_PI; theta = theta + 2*M_PI/n_th ){
         int l = 0;
@@ -37,8 +50,37 @@ Eigen::MatrixXd map2polar(const nav_msgs::OccupancyGrid &map, geometry_msgs::Pos
         }
         i++;
     }
+    // add the other robots, one column per robot.
+    int r_idx = 0;
+    for (int r = 0; r<nRobots; r++){
+        if (r!=robot_id){
+            geometry_msgs::Pose2D other_robot = odomToPose2D(odoms[r]);
+            double dx = other_robot.x-robot.x;
+            double dy = other_robot.y-robot.y;
+            double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
+            double t_r = atan2(dy,dx)-robot.theta; // bearing to 
+            int t_idx = round(t_r*n_th/(2*M_PI));
+            coff(t_idx,r_idx) = l_r;
+            r_idx++;
+        }
+    }
+
     return coff;
 }
+
+geometry_msgs::Twist polarToTwist(const Eigen::Vector2d &coff, nav_msgs::Odometry &odom){
+    geometry_msgs::Pose2D robot = odomToPose2D(odom);
+    geometry_msgs::Twist out;
+    out.linear.x = cos(coff(0) + robot.theta) * coff(1);
+    out.linear.y = sin(coff(0) + robot.theta) * coff(1);
+    out.linear.z = 0;
+    out.angular.x = 0;
+    out.angular.y = 0;
+    out.angular.z = 180/M_PI*(coff(2) + robot.theta);
+    return out;
+}
+
+
 /*
 THE FOLLWOING CODE IS NOT TESTED AND PROBABLY DOESNT WORK
 nav_msgs::OccupancyGrid polar2map(const Eigen::MatrixXd &coff, geometry_msgs::Pose2D robot, double res=0.005){
@@ -76,15 +118,5 @@ nav_msgs::OccupancyGrid polar2map(const Eigen::MatrixXd &coff, geometry_msgs::Po
 
     return map;
 }
+*/ 
 
-geometry_msgs::Twist polar2waypoint(const Eigen::MatrixXd &coff, geometry_msgs::Pose2D robot){
-    geometry_msgs::Twist out;
-    return out;
-}
-
-Eigen::MatrixXd addOtherRobots(Eigen::MatrixXd &coff, geoemtry_msgs::Pose2D robot, std::vector<geometry_msgs::Pose2D> other_robots){
-    Eigen::MatrixXd out;
-    return out;
-}
-
-*/

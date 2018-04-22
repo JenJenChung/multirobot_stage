@@ -57,8 +57,8 @@ class ActionNode{
         void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr&);
         void odomCallback(const nav_msgs::Odometry::ConstPtr&, nav_msgs::Odometry*);
 
-        geometry_msgs::Twist getAction();
-        geometry_msgs::Twist getAction(const Eigen::MatrixXd&);
+        geometry_msgs::Twist getWaypoint();
+        Eigen::Vector2d getAction(const Eigen::MatrixXd&);
 };
 
 ActionNode::ActionNode(ros::NodeHandle n){
@@ -107,7 +107,7 @@ ActionNode::ActionNode(ros::NodeHandle n){
     
 void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     merged_map_ = *msg;
-    // TODO: this callback will also calculate the current_state
+    current_state_ = mapToPolar(merged_map_, odoms_, robot_id_, nRobots_);
 }
 
 void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_msgs::Odometry *msg_out)
@@ -115,16 +115,17 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
     *msg_out = *msg_in;
 }
 
-geometry_msgs::Twist ActionNode::getAction(){
+geometry_msgs::Twist ActionNode::getWaypoint(){
     // This method outputs an action belonging to a state according to the loaded policy
-    geometry_msgs::Twist action = ActionNode::getAction(current_state_);
-    action_pub_.publish<geometry_msgs::Twist>(action);
-    return action;
+    Eigen::Vector2d action = ActionNode::getAction(current_state_);
+    geometry_msgs::Twist waypoint = polarToTwist(action, odoms_[robot_id_]);
+    action_pub_.publish<geometry_msgs::Twist>(waypoint);
+    return waypoint;
 }
 
-geometry_msgs::Twist ActionNode::getAction(const Eigen::MatrixXd &state){
+Eigen::Vector2d ActionNode::getAction(const Eigen::MatrixXd &state){
     // This method outputs an action belonging to a state according to the loaded policy
-    geometry_msgs::Twist action; 
+    Eigen::Vector2d action;
     // TODO: insert policy here
     return action;
 }

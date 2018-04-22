@@ -1,2 +1,9 @@
 learning:
-  episode_length: 60.0 # length of each episode in seconds
+  episode_length: 30.0 # length of each episode in seconds
+  nRob: 2
+  nIn: 18
+  nOut: 10
+  nHidden: 20
+  nPop: 1
+  nEps: 1
+  
