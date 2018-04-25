@@ -36,6 +36,7 @@ Logic:
 # include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 # include <Eigen/Dense>
 # include <conversions.h>
+# include <multirobot_stage/NeuralNet.h>
 
 class ActionNode{
     public:
@@ -60,45 +61,53 @@ class ActionNode{
         nav_msgs::OccupancyGrid *merged_map_;
         nav_msgs::Odometry *odoms_;
 
+        tf2_ros::Buffer tfBuffer_;
+        tf2_ros::TransformListener tfListener_; 
+
+        NeuralNet policy_;
+
         void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr&);
         void odomCallback(const nav_msgs::Odometry::ConstPtr&, nav_msgs::Odometry*);
         void statusCallback(const actionlib_msgs::GoalStatusArray::ConstPtr&);
 
-        // Initialize transform listener
-        tf2_ros::Buffer tfBuffer_;
-        tf2_ros::TransformListener tfListener_; 
-
+        Eigen::MatrixXd readNN(std::string &);
         void getWaypoint();
         Eigen::Vector3d getAction(const Eigen::MatrixXd&);
 };
 
-ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_) {
+ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0, 0) {
     nh_ = n;
 
     // Initialize ROS params:
     nh_.param<int>("robot_id", robot_id_, 0);
     nh_.param<int>("n_robots", n_robots_, 1);
 
-    std::string rootns, merged_map_topic, odom_topic, action_topic, status_topic; 
+    std::string rootns, merged_map_topic, odom_topic, action_topic, status_topic;
     nh_.param<std::string>("root_namespace", rootns, "robot");
     nh_.param<std::string>("merged_map_topic", merged_map_topic, "map");
     nh_.param<std::string>("odom_topic", odom_topic, "odom");
     nh_.param<std::string>("action_topic", action_topic, "action");
     nh_.param<std::string>("status_topic", status_topic, "move_base/status");
+
     
+    int n_hidden;
+    std::string nn_A_file, nn_B_file;
     nh_.param<int>("bearing_number", n_th_, 256);
+    nh_.param<int>("hidden_layers", n_hidden, 256);
+    nh_.param<std::string>("nn_A_file_name", nn_A_file, "nn_A_weights");
+    nh_.param<std::string>("nn_B_file_name", nn_A_file, "nn_B_weights");
 
     odoms_ = new nav_msgs::Odometry[n_robots_];
     merged_map_ = new nav_msgs::OccupancyGrid;
     odom_sub_ = new ros::Subscriber[n_robots_];
 
-    current_state_ = Eigen::MatrixXd::Zero(n_th_,2+n_robots_);
+    current_state_ = Eigen::MatrixXd::Zero(n_th_,1+n_robots_);
 
     // Load policy
-    /* load the policy, possible formats:
-        - weights or other parameters of a predefined function
-        - a generic function defined in a separate file or script:
-    */
+    Eigen::MatrixXd A = ActionNode::readNN(nn_A_file);
+    Eigen::MatrixXd B = ActionNode::readNN(nn_B_file);
+    policy_ = NeuralNet(n_th_*(1+n_robots_), 3, n_hidden, TANH);
+    policy_.SetWeights(A, B);
     
     // Initialize Subscribers and Publishers
     std::stringstream mergedmaptopic;
@@ -127,7 +136,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_) {
 void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-    ROS_INFO_STREAM("Current state:\n"<< current_state_);
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n"<< current_state_);
     visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, odoms_[robot_id_]);
     rec_map_pub_.publish(rec_map);
 }
@@ -166,6 +175,24 @@ void ActionNode::statusCallback(const actionlib_msgs::GoalStatusArray::ConstPtr&
     }
 }
 
+Eigen::MatrixXd ActionNode::readNN(std::string &fileName){
+    std::ifstream NNFile;
+    Eigen::MatrixXd A;
+    NNFile.open(fileName.c_str());
+    // TODO: FIX THIS
+    // if (NNFile){
+    //     std::string row;
+    //     int i = 0;
+    //     while (NNFile >> row){
+    //         row >> A.row(i); // << row;
+    //         i++;
+    //     }
+    // }
+	NNFile.close() ;
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Loaded " << fileName << ".\nCoefficients:\n" << A);
+    return A;
+}
+
 void ActionNode::getWaypoint(){
     // This method outputs an action belonging to a state according to the loaded policy
     Eigen::Vector3d action = ActionNode::getAction(current_state_);
@@ -175,7 +202,11 @@ void ActionNode::getWaypoint(){
 
 Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     // This method outputs an action belonging to a state according to the loaded policy
-    Eigen::Vector3d action;
-    // TODO: insert policy here
+    // Slice the state (remove the bearing column) and reshape the state into a vector
+    Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
+    Eigen::Map<VectorXd> nn_input(M.data(), M.size());
+
+    // Evaluate the network with the state as input
+    Eigen::Vector3d action = policy_.EvaluateNN(nn_input);
     return action;
 }
