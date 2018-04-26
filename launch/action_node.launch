@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="multirobot_stage" type="action_node" name="action_node" output="screen">
+    <param name="robot_map_topic" value="map"/>
+    <param name="robot_id" value="0"/>
+    <param name="n_robots" value="2"/>
+    <param name="root_namespace" value="robot"/>
+    <param name="merged_map_topic" value="map"/>
+    <param name="odom_topic" value="odom"/>
+    <param name="action_topic" value="map_goal"/>
+    <param name="status_topic" value="move_base/status"/>
+    <param name="bearing_number" value="32"/>
+  </node>
+</launch>

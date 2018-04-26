@@ -51,6 +51,9 @@
   <build_depend>sensor_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>tf</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
+  <build_depend>eigen_conversions</build_depend>
   <build_depend>costmap_2d</build_depend>
   <run_depend>gmapping</run_depend>
   <run_depend>move_base</run_depend>
@@ -63,6 +66,9 @@
   <run_depend>sensor_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf</run_depend>
+  <run_depend>tf2_ros</run_depend>
+  <run_depend>tf2_geometry_msgs</run_depend>
+  <run_depend>eigen_conversions</run_depend>
   <run_depend>costmap_2d</run_depend>
 
 

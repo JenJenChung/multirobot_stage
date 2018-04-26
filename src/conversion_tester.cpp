@@ -12,7 +12,7 @@ class ConversionTester{
         ros::Subscriber odom_sub_;
         ros::Subscriber map_sub_;
 
-        nav_msgs::OccupancyGrid map_;
+        Eigen::MatrixXd state_;
         nav_msgs::Odometry odom_;
 
         void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr&);
@@ -22,23 +22,22 @@ class ConversionTester{
 ConversionTester::ConversionTester(ros::NodeHandle nh, std::string map_topic, std::string odom_topic){
     nh_ = nh;
 
-    ros::Subscriber map_sub_ = nh_.subscribe(map_topic, 1, &ConversionTester::mapCallback, this);
-    ROS_INFO("subscribed to map topic");
+    map_sub_ = nh_.subscribe(map_topic, 10, &ConversionTester::mapCallback, this);
+    ROS_INFO_STREAM("subscribed to " << map_topic);
 
-    ros::Subscriber odom_sub_ = nh_.subscribe(odom_topic, 1, &ConversionTester::odomCallback, this);
-    ROS_INFO("subscribed to odom topic");
+    odom_sub_ = nh_.subscribe(odom_topic, 10, &ConversionTester::odomCallback, this);
+    ROS_INFO_STREAM("subscribed to " << odom_topic);
 
 }
 
 void ConversionTester::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
-    ROS_INFO("received map");
-    Eigen::MatrixXd coff = mapToPolar(*msg, &odom_, 0, 1);
-    ROS_INFO("map converted");
-    std::cout << coff << std::endl;
+    state_ = mapToPolar(*msg, &odom_, 0, 1);
+    std::cout << state_ << std::endl;
 }
 
 void ConversionTester::odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
     odom_ = *msg;
+    ROS_INFO_STREAM("Robot Odometry:\n" << odom_.pose.pose);
 }
 
 int main(int argc, char **argv){
@@ -47,8 +46,8 @@ int main(int argc, char **argv){
         map_topic = argv[1];
         odom_topic = argv[2];
     } else {
-        map_topic = "robot_0/map";
-        odom_topic = "robot_0/odom";
+        map_topic = "/robot_0/map";
+        odom_topic = "/robot_0/odom";
     }
     ros::init(argc, argv, "conversion_tester");
     ROS_INFO("conversion_tester initialized");

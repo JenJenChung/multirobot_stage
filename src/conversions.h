@@ -7,6 +7,7 @@
 # include <geometry_msgs/Twist.h>
 # include <Eigen/Dense>
 # include <eigen_conversions/eigen_msg.h>
+# include <visualization_msgs/MarkerArray.h>
 
 geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
     geometry_msgs::Pose2D pose;
@@ -19,40 +20,42 @@ geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
     return pose;
 }
 
-
-Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometry *odoms, int robot_id, int nRobots, int n_th=4, double thresh=50){
-    Eigen::MatrixXd coff = Eigen::MatrixXd::Zero(n_th,2+nRobots);
+Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometry *odoms, int robot_id, int n_robots, int n_th=4, double thresh=50){
+    Eigen::MatrixXd polar = Eigen::MatrixXd::Zero(n_th,2+n_robots);
     double res = map.info.resolution;
     geometry_msgs::Point origin = map.info.origin.position;
     geometry_msgs::Pose2D robot = odomToPose2D(odoms[robot_id]);
-    int i = 0;
-    for (double theta = 0; theta<2*M_PI; theta = theta + 2*M_PI/n_th ){
-        int l = 0;
-        int b = 0;
-        bool looking = true;
-        coff(i,0) = theta;
+    double theta;
+    int l = 0;
+    int b = 0;
+    bool looking = true;
+    for (int i = 0; i<n_th; i++){
+        theta = theta + 2*M_PI/n_th;
+        l = 0;
+        b = 0;
+        looking = true;
+        polar(i,0) = theta;
         while (looking){
             int x = round(cos(robot.theta + theta)*l + (robot.x-origin.x)/res);
             int y = round(sin(robot.theta + theta)*l + (robot.y-origin.y)/res);
             if (x > map.info.width || y > map.info.height || x < 0 || y < 0){
                 looking = false;
             } else {
-                int a = x*map.info.width + y;
-                if (map.data[a]>thresh && coff(i,1)==0){
-                    coff(i,1) = l*res;
+                int a = y*map.info.width + x;
+                if (map.data[a]>thresh && polar(i,1)==0){
+                    polar(i,1) = l*res;
                 }
                 if (map.data[a]==-1 && map.data[b]!=-1){
-                    coff(i,2) = l*res;
+                    polar(i,2) = l*res;
                 }
                 b = a;
                 l++;   
             }
         }
-        i++;
     }
     // add the other robots, one column per robot.
-    int r_idx = 0;
-    for (int r = 0; r<nRobots; r++){
+    int r_idx = 3;
+    for (int r = 0; r<n_robots; r++){
         if (r!=robot_id){
             geometry_msgs::Pose2D other_robot = odomToPose2D(odoms[r]);
             double dx = other_robot.x-robot.x;
@@ -60,63 +63,69 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometr
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
             double t_r = atan2(dy,dx)-robot.theta; // bearing to 
             int t_idx = round(t_r*n_th/(2*M_PI));
-            coff(t_idx,r_idx) = l_r;
+            polar(t_idx,r_idx) = l_r;
             r_idx++;
         }
     }
-
-    return coff;
+    return polar;
 }
 
-geometry_msgs::Twist polarToTwist(const Eigen::Vector2d &coff, nav_msgs::Odometry &odom){
+geometry_msgs::Twist polarToTwist(const Eigen::Vector3d &polar, nav_msgs::Odometry &odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     geometry_msgs::Twist out;
-    out.linear.x = cos(coff(0) + robot.theta) * coff(1);
-    out.linear.y = sin(coff(0) + robot.theta) * coff(1);
+    out.linear.x = cos(polar(0) + robot.theta) * polar(1);
+    out.linear.y = sin(polar(0) + robot.theta) * polar(1);
     out.linear.z = 0;
     out.angular.x = 0;
     out.angular.y = 0;
-    out.angular.z = 180/M_PI*(coff(2) + robot.theta);
+    out.angular.z = 180/M_PI*(polar(2) + robot.theta);
     return out;
 }
 
+visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar, nav_msgs::Odometry &odom, double res=0.005){
+    geometry_msgs::Pose2D robot = odomToPose2D(odom);
+    visualization_msgs::MarkerArray markers;
+    double obstx, obsty, frontx, fronty;
+    visualization_msgs::Marker obst, front;
+    for (int i=0; i<polar.rows(); i++){
+        obst.ns = "obstacle_markers";
+        obst.id = i;
+        obst.header.frame_id = odom.header.frame_id;
+        obst.header.stamp = ros::Time();
+        obst.pose.position.x = cos(robot.theta + polar(i,0))*polar(i,1) + robot.x;
+        obst.pose.position.y = sin(robot.theta + polar(i,0))*polar(i,1) + robot.y;
+        obst.pose.orientation.w = 1;
+        obst.action = visualization_msgs::Marker::ADD;
+        obst.type = visualization_msgs::Marker::SPHERE;
+        obst.scale.x = 20*res;
+        obst.scale.y = 20*res;
+        obst.scale.z = 20*res; 
+        obst.color.r = 1;
+        obst.color.g = 0;
+        obst.color.b = 0;
+        obst.color.a = 1;
+        obst.frame_locked = true;
 
-/*
-THE FOLLWOING CODE IS NOT TESTED AND PROBABLY DOESNT WORK
-nav_msgs::OccupancyGrid polar2map(const Eigen::MatrixXd &coff, geometry_msgs::Pose2D robot, double res=0.005){
-    nav_msgs::OccupancyGrid map;
-    map.info.resolution = res;
-    
-    std::vector<double> obstx, obsty, frontx, fronty;
-    for (int i=0; i<coff.rows(); i++){
-        obstx.push_back(cos(robot.theta + coff(i,0))*coff(i,1) + robot.x);
-        obsty.push_back(sin(robot.theta + coff(i,0))*coff(i,1) + robot.y);
-        frontx.push_back(cos(robot.theta + coff(i,0))*coff(i,2) + robot.x);
-        fronty.push_back(sin(robot.theta + coff(i,0))*coff(i,2) + robot.y);
-    }
-    double maxx, minx, maxy, miny;
-    maxy= std::max(*std::max_element(obsty.begin(),obsty.end()),   *std::max_element(fronty.begin(),fronty.end()));
-    miny= std::min(*std::min_element(obsty.begin(),obsty.end()),   *std::min_element(fronty.begin(),fronty.end()));
-    maxx= std::max(*std::max_element(obstx.begin(),obstx.end()),   *std::max_element(frontx.begin(),frontx.end()));
-    minx= std::min(*std::min_element(obstx.begin(),obstx.end()),   *std::min_element(frontx.begin(),frontx.end()));
-    int height = round((maxy-miny)/res);
-    int width  = round((maxx-minx)/res);
-    map.info.height = height;
-    map.info.width  = width;
+        front.ns = "frontier_markers";
+        front.id = i;
+        front.header.frame_id = odom.header.frame_id;
+        front.header.stamp = ros::Time();
+        front.pose.position.x = cos(robot.theta + polar(i,0))*polar(i,2) + robot.x;
+        front.pose.position.y = sin(robot.theta + polar(i,0))*polar(i,2) + robot.y;
+        front.pose.orientation.w = 1;
+        front.action = visualization_msgs::Marker::ADD;
+        front.type = visualization_msgs::Marker::SPHERE;
+        front.scale.x = 20*res;
+        front.scale.y = 20*res;
+        front.scale.z = 20*res;
+        front.color.r = 0;
+        front.color.g = 0;
+        front.color.b = 1;
+        front.color.a = 1;
+        front.frame_locked = true;
 
-    std::vector<signed char> data(height*width); // = new std_msgs::Int8[height*width];
-    for (int a=0; a<height*width; a++){
-        data[a] = 0;
+        markers.markers.push_back(obst);
+        markers.markers.push_back(front);
     }
-    map.data = data;
-    for (int i=0; i<coff.rows(); i++){
-        int a = round((obsty[i]*map.info.width + obstx[i])/res);
-        map.data[a] = 100;
-        int b = round((fronty[i]*map.info.width + frontx[i])/res);
-        map.data[b] = -1;
-    }
-
-    return map;
+    return markers;
 }
-*/ 
-

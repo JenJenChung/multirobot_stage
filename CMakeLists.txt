@@ -17,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   tf
+  tf2_ros
+  tf2_geometry_msgs
   eigen_conversions
   costmap_2d
 )
@@ -25,7 +27,9 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES multirobot_stage
-  CATKIN_DEPENDS gmapping move_base roscpp rospy rviz stage_ros std_msgs geometry_msgs sensor_msgs nav_msgs tf costmap_2d
+  CATKIN_DEPENDS gmapping move_base roscpp rospy rviz stage_ros
+                  std_msgs geometry_msgs sensor_msgs nav_msgs
+                  tf tf2_ros tf2_geometry_msgs eigen_conversions costmap_2d
   DEPENDS system_lib
 )
 
@@ -49,6 +53,7 @@ target_link_libraries(action_node
                       ${catkin_LIBRARIES}
                       ${Eigen3_LIBRARIES}
                       m)
+
 add_executable(robot_map src/robot_costmap.cpp)
 target_link_libraries(robot_map ${catkin_LIBRARIES})
 add_dependencies(robot_map ${catkin_EXPORTED_TARGETS})
@@ -57,9 +62,9 @@ add_executable(learning_episode_timer src/learning_episode_timer.cpp)
 target_link_libraries(learning_episode_timer ${catkin_LIBRARIES})
 add_dependencies(learning_episode_timer ${catkin_EXPORTED_TARGETS})
 
-add_executable(comms_node src/comms_node.cpp)
-target_link_libraries(comms_node ${catkin_LIBRARIES})
-add_dependencies(comms_node ${catkin_EXPORTED_TARGETS})
+#add_executable(comms_node src/comms_node.cpp)
+#target_link_libraries(comms_node ${catkin_LIBRARIES})
+#add_dependencies(comms_node ${catkin_EXPORTED_TARGETS})
 
 add_executable(multiRobotNE src/multiRobotNE.cpp)
 target_link_libraries(multiRobotNE ${catkin_LIBRARIES})
