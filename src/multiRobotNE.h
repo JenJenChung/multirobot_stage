@@ -25,6 +25,7 @@ class MultiRobotNE{
     int nHidden ;  // number of hidden neurons
     int nPop ;     // population size
     int nEps ;     // number of learning epochs
+    actFun afType;
     
     int epochCount ;   // epoch counter (number of evolutions)
     int teamCount ;    // episode counter (number of tested policies in one evolution)
@@ -56,9 +57,20 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   ros::param::get("/learning/nHidden", nHidden);
   ros::param::get("/learning/nPop", nPop);
   ros::param::get("/learning/nEps", nEps);
+  std::string aFun;
+  ros::param::get("/learning/actFun", aFun);
+
+  if (aFun == "tanh"){
+    afType = TANH;
+  } else if (aFun == "logistic"){
+    afType = LOGISTIC;
+  } else {
+    ROS_INFO("Invalid activation function type, using logistic.");
+    afType = LOGISTIC;
+  }
   
   for (int n = 0; n < nRob; n++){
-    NeuroEvo * NE = new NeuroEvo(nIn, nOut, nHidden, nPop) ; // default activation is TANH
+    NeuroEvo * NE = new NeuroEvo(nIn, nOut, nHidden, nPop, afType); 
     robotTeam.push_back(NE) ;
   }
   

@@ -70,12 +70,11 @@ class ActionNode{
         void odomCallback(const nav_msgs::Odometry::ConstPtr&, nav_msgs::Odometry*);
         void statusCallback(const actionlib_msgs::GoalStatusArray::ConstPtr&);
 
-        Eigen::MatrixXd readNN(std::string &);
         void getWaypoint();
         Eigen::Vector3d getAction(const Eigen::MatrixXd&);
 };
 
-ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0, 0) {
+ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0, 0, LOGISTIC) {
     nh_ = n;
 
     // Initialize ROS params:
@@ -88,26 +87,30 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.param<std::string>("odom_topic", odom_topic, "odom");
     nh_.param<std::string>("action_topic", action_topic, "action");
     nh_.param<std::string>("status_topic", status_topic, "move_base/status");
-
     
+    // load policy network parameters
     int n_hidden;
-    std::string nn_A_file, nn_B_file;
+    std::string aFun;
     nh_.param<int>("bearing_number", n_th_, 256);
     nh_.param<int>("hidden_layers", n_hidden, 256);
-    nh_.param<std::string>("nn_A_file_name", nn_A_file, "nn_A_weights");
-    nh_.param<std::string>("nn_B_file_name", nn_A_file, "nn_B_weights");
+    nh_.param<std::string>("activation_function", aFun, "logistic");
+    std::vector<double> AA, BB;
+    std::stringstream A_param, B_param;
+    A_param << rootns << "_" << robot_id_ << "/A";
+    B_param << rootns << "_" << robot_id_ << "/B";
+    nh_.param<std::vector<double>>(A_param.str(), AA);
+    nh_.param<std::vector<double>>(B_param.str(), BB);
+
+    MatrixXd A(n_th_*(1+n_robots_), n_hidden);
+    MatrixXd B(n_hidden+1, 3);
+    policy_ = NeuralNet(n_th_*(1+n_robots_), 3, n_hidden, LOGISTIC);
+    policy_.SetWeights(A, B);
 
     odoms_ = new nav_msgs::Odometry[n_robots_];
     merged_map_ = new nav_msgs::OccupancyGrid;
     odom_sub_ = new ros::Subscriber[n_robots_];
 
     current_state_ = Eigen::MatrixXd::Zero(n_th_,1+n_robots_);
-
-    // Load policy
-    Eigen::MatrixXd A = ActionNode::readNN(nn_A_file);
-    Eigen::MatrixXd B = ActionNode::readNN(nn_B_file);
-    policy_ = NeuralNet(n_th_*(1+n_robots_), 3, n_hidden, TANH);
-    policy_.SetWeights(A, B);
     
     // Initialize Subscribers and Publishers
     std::stringstream mergedmaptopic;
@@ -175,24 +178,6 @@ void ActionNode::statusCallback(const actionlib_msgs::GoalStatusArray::ConstPtr&
     }
 }
 
-Eigen::MatrixXd ActionNode::readNN(std::string &fileName){
-    std::ifstream NNFile;
-    Eigen::MatrixXd A;
-    NNFile.open(fileName.c_str());
-    // TODO: FIX THIS
-    // if (NNFile){
-    //     std::string row;
-    //     int i = 0;
-    //     while (NNFile >> row){
-    //         row >> A.row(i); // << row;
-    //         i++;
-    //     }
-    // }
-	NNFile.close() ;
-    ROS_INFO_STREAM("Robot " << robot_id_ << ": Loaded " << fileName << ".\nCoefficients:\n" << A);
-    return A;
-}
-
 void ActionNode::getWaypoint(){
     // This method outputs an action belonging to a state according to the loaded policy
     Eigen::Vector3d action = ActionNode::getAction(current_state_);
@@ -208,5 +193,11 @@ Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
 
     // Evaluate the network with the state as input
     Eigen::Vector3d action = policy_.EvaluateNN(nn_input);
+
+    // convert NN output
+    int t_idx = round(action(0)*n_th_);
+    action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
+    action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
+    action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
     return action;
 }

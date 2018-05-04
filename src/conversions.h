@@ -42,10 +42,10 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometr
                 looking = false;
             } else {
                 int a = y*map.info.width + x;
-                if (map.data[a]>thresh && polar(i,1)==0){
+                if (map.data[a]>thresh && polar(i,1)==0){ // distance to closest obstacle
                     polar(i,1) = l*res;
                 }
-                if (map.data[a]==-1 && map.data[b]!=-1){
+                if (map.data[a]==-1 && map.data[b]!=-1){ // distance to frontier
                     polar(i,2) = l*res;
                 }
                 b = a;
