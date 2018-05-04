@@ -79,7 +79,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
 
     // Initialize ROS params:
     nh_.param<int>("robot_id", robot_id_, 0);
-    nh_.param<int>("n_robots", n_robots_, 1);
+    nh_.param<int>("/learning/nRob", n_robots_, 1);
 
     std::string rootns, merged_map_topic, odom_topic, action_topic, status_topic;
     nh_.param<std::string>("root_namespace", rootns, "robot");
@@ -91,21 +91,34 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     // load policy network parameters
     int n_hidden;
     std::string aFun;
-    nh_.param<int>("bearing_number", n_th_, 256);
-    nh_.param<int>("hidden_layers", n_hidden, 256);
-    nh_.param<std::string>("activation_function", aFun, "logistic");
+    nh_.param<int>("/learning/nBearings", n_th_, 256);
+    nh_.param<int>("/learning/nHidden", n_hidden, 256);
+    nh_.param<std::string>("/learning/actFun", aFun, "logistic");
     std::vector<double> AA, BB;
     std::stringstream A_param, B_param;
-    A_param << rootns << "_" << robot_id_ << "/A";
-    B_param << rootns << "_" << robot_id_ << "/B";
-    nh_.param<std::vector<double>>(A_param.str(), AA);
-    nh_.param<std::vector<double>>(B_param.str(), BB);
-
+    A_param << "/" << rootns << "_" << robot_id_ << "/A";
+    B_param << "/" << rootns << "_" << robot_id_ << "/B";
+    nh_.getParam(A_param.str(), AA);
+    nh_.getParam(B_param.str(), BB);
     MatrixXd A(n_th_*(1+n_robots_), n_hidden);
     MatrixXd B(n_hidden+1, 3);
+    int ii = 0;
+    for (int i=0; i<A.rows(); i++){
+        for (int j=0; j<A.cols(); j++){
+            A(i,j) = AA[ii];
+            ii++;
+        }
+    }
+    ii = 0;
+    for (int i=0; i<B.rows(); i++){
+        for (int j=0; j<B.cols(); j++){
+            B(i,j) = BB[ii];
+            ii++;
+        }
+    }
     policy_ = NeuralNet(n_th_*(1+n_robots_), 3, n_hidden, LOGISTIC);
     policy_.SetWeights(A, B);
-
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Weight matrices set!");
     odoms_ = new nav_msgs::Odometry[n_robots_];
     merged_map_ = new nav_msgs::OccupancyGrid;
     odom_sub_ = new ros::Subscriber[n_robots_];
@@ -194,7 +207,7 @@ Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     // Evaluate the network with the state as input
     Eigen::Vector3d action = policy_.EvaluateNN(nn_input);
 
-    // convert NN output
+    // convert NN output to feasible action on the map
     int t_idx = round(action(0)*n_th_);
     action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
     action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction

@@ -1,9 +1,11 @@
 learning:
   episode_length: 600.0 # length of each episode in seconds
   nRob: 2
-  nIn: 18
-  nOut: 10
+  nBearings: 100
+  nIn: 300 # nBearings*(nRob+1)
+  nOut: 3 # predefined
   nHidden: 20
-  nPop: 1
+  nPop: 5
   nEps: 1
+  actFun: "logistic"
   
