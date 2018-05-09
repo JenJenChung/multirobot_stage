@@ -19,6 +19,9 @@ do
   roslaunch multirobot_stage action_node.launch robot_id:=$i &
 done
 
+roslaunch multirobot_stage rewards_node.launch &
+pid="$pid $!"
+
 roslaunch multirobot_stage multirobot_map_merge.launch &
 pid="$pid $!"
 # =========== END ROS simulation nodes =========== 

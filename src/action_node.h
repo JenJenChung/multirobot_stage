@@ -52,7 +52,7 @@ class ActionNode{
         ros::Subscriber map_sub_;
         ros::Subscriber *odom_sub_;
         ros::Subscriber stat_sub_;
-        ros::Publisher action_pub_;
+        //ros::Publisher action_pub_;
         ros::Publisher rec_map_pub_;
 
         int robot_id_;
@@ -73,7 +73,6 @@ class ActionNode{
 
         void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr&);
         void odomCallback(const nav_msgs::Odometry::ConstPtr&, nav_msgs::Odometry*);
-        //void statusCallback(const actionlib_msgs::GoalStatusArray::ConstPtr&);
 
         move_base_msgs::MoveBaseGoal getGoal();
         Eigen::Vector3d getAction(const Eigen::MatrixXd&);
@@ -88,12 +87,10 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.param<int>("robot_id", robot_id_, 0);
     nh_.param<int>("/learning/nRob", n_robots_, 1);
 
-    std::string rootns, merged_map_topic, odom_topic, action_topic; //, status_topic;
+    std::string rootns, merged_map_topic, odom_topic; //, action_topic, status_topic;
     nh_.param<std::string>("root_namespace", rootns, "robot");
     nh_.param<std::string>("merged_map_topic", merged_map_topic, "map");
     nh_.param<std::string>("odom_topic", odom_topic, "odom");
-    nh_.param<std::string>("action_topic", action_topic, "map_goal");
-    // nh_.param<std::string>("status_topic", status_topic, "move_base/status");
     
     // load policy network parameters
     int n_hidden;
@@ -130,7 +127,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     merged_map_ = new nav_msgs::OccupancyGrid;
     odom_sub_ = new ros::Subscriber[n_robots_];
 
-    current_state_ = Eigen::MatrixXd::Zero(n_th_,1+n_robots_);
+    current_state_ = Eigen::MatrixXd::Zero(n_th_,2+n_robots_);
     goal_state_ = NULL;
     
     // Initialize Subscribers and Publishers
@@ -146,14 +143,6 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
         ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << robotopic.str());
     }
 
-    // std::stringstream statustopic;
-    // statustopic << "/" << rootns << "_" << robot_id_ << "/" << status_topic;
-    // stat_sub_ = nh_.subscribe(statustopic.str(), 10, &ActionNode::statusCallback, this);
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << statustopic.str());
-
-    std::stringstream actiontopic;
-    actiontopic << "/" << rootns << "_" << robot_id_ << "/" << action_topic;
-    action_pub_ = nh_.advertise<geometry_msgs::Twist>(actiontopic.str(),10);
     rec_map_pub_= nh_.advertise<visualization_msgs::MarkerArray>("rec_map",10);
 }
     
@@ -192,13 +181,13 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
 
     geometry_msgs::Twist waypoint = polarToTwist(action, odoms_[robot_id_]);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted waypoint (geometry_msgs/Twist):\n" << waypoint);
-    action_pub_.publish<geometry_msgs::Twist>(waypoint);
     return goal;
 }
 
 Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     // This method outputs an action belonging to a state according to the loaded policy
     // Slice the state (remove the bearing column) and reshape the state into a vector
+    ROS_INFO_STREAM("Number of rows:\n"<<state.rows()<<std::endl<<"Number of cols:\n"<<state.cols());
     Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
     Eigen::Map<VectorXd> nn_input(M.data(), M.size());
 
@@ -226,16 +215,17 @@ void ActionNode::actionThread(){
     }
 
     ros::Rate r(10);
-    ros::Duration(10.0).sleep();
     while (ros::ok){
-        if (goal_state_){
+        if (goal_state_ && merged_map_){
             if (goal_state_->isDone()){  //
                 ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
                 *goal_state_ = ac.sendGoalAndWait(getGoal());
             }
-        } else {
+        } else if (merged_map_) {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
             goal_state_ = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
+        } else {
+            ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
         }
 
         if(*goal_state_ == actionlib::SimpleClientGoalState::SUCCEEDED){
@@ -243,15 +233,12 @@ void ActionNode::actionThread(){
         } else {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
         }
+        r.sleep();
     }
-    r.sleep();
 }
 
 void ActionNode::spin(){
     boost::thread action_thread(&ActionNode::actionThread,this);
-    ros::Rate r(10);
-    while (ros::ok){
-        ros::spinOnce;
-        r.sleep();
-    }
+    ros::spin();
+    action_thread.join();
 }

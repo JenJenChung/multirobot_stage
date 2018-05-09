@@ -70,3 +70,7 @@ add_dependencies(learning_episode_timer ${catkin_EXPORTED_TARGETS})
 add_executable(multiRobotNE src/multiRobotNE.cpp)
 target_link_libraries(multiRobotNE ${catkin_LIBRARIES})
 add_dependencies(multiRobotNE ${catkin_EXPORTED_TARGETS})
+
+add_executable(rewards_node src/exploration_rewards.cpp)
+target_link_libraries(rewards_node ${catkin_LIBRARIES})
+add_dependencies(rewards_node ${catkin_EXPORTED_TARGETS})

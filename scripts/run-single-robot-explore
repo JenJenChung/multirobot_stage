@@ -16,6 +16,10 @@ roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot
 pid="$pid $!"
 
 roslaunch multirobot_stage single_action_node.launch robot_id:=0 &
+pid="$pid $!"
+
+roslaunch multirobot_stage rewards_node.launch &
+pid="$pid $!"
 
 #roslaunch multirobot_stage multirobot_map_merge.launch &
 #pid="$pid $!"

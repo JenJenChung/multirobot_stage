@@ -19,7 +19,7 @@ void ExplorationRewards::mapCallback(const nav_msgs::OccupancyGrid &msg)
  
     area *= msg.info.resolution * msg.info.resolution;
 
-    std_msgs::Float32 area_msg;
+    std_msgs::Float64 area_msg;
     area_msg.data = area;
     _pub.publish(area_msg);
     ROS_INFO("total area: %f\n", area);
@@ -27,10 +27,10 @@ void ExplorationRewards::mapCallback(const nav_msgs::OccupancyGrid &msg)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "exploration_rewards");
-
-    ExplorationRewards er;
-
+    ros::init(argc, argv, "rewards_node");
+    ROS_INFO("rewards_node initialized");
+    ros::NodeHandle nh("~");
+    ExplorationRewards er(nh);
     ros::spin();
     return 0;
 }
