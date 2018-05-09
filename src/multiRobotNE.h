@@ -195,7 +195,11 @@ void MultiRobotNE::NewEpisode(){
     // Nodes must also read in ROS params for robot control policies
     // This implementation expects the reward to be written to a rosparam
     // Simulation timer will automatically terminal the episode
-    system("rosrun multirobot_stage run-multi-robot-explore") ;
+    if (nRob>1){
+      system("rosrun multirobot_stage run-multi-robot-explore") ;
+    } else {
+      system("rosrun multirobot_stage run-single-robot-explore") ;
+    }
   }
   else{
     ROS_INFO("All learning episodes complete!") ;

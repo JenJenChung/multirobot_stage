@@ -1,4 +1,6 @@
 <launch>
+  <arg name="nRob" default="1"/>
   <rosparam command="load" file="$(find multirobot_stage)/scripts/learning_params.yaml"/>
+  <param name="learning/nRob" value="$(arg nRob)"/>
   <node pkg="multirobot_stage" type="multiRobotNE" name="multirobot_learning" output="screen"/>
 </launch>

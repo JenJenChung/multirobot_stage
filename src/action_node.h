@@ -85,7 +85,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.param<std::string>("root_namespace", rootns, "robot");
     nh_.param<std::string>("merged_map_topic", merged_map_topic, "map");
     nh_.param<std::string>("odom_topic", odom_topic, "odom");
-    nh_.param<std::string>("action_topic", action_topic, "action");
+    nh_.param<std::string>("action_topic", action_topic, "map_goal");
     nh_.param<std::string>("status_topic", status_topic, "move_base/status");
     
     // load policy network parameters
@@ -127,24 +127,24 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     
     // Initialize Subscribers and Publishers
     std::stringstream mergedmaptopic;
-    mergedmaptopic << rootns << "_" << robot_id_ << "/" << merged_map_topic;
+    mergedmaptopic << "/" << rootns << "_" << robot_id_ << "/" << merged_map_topic;
     map_sub_ = nh_.subscribe(mergedmaptopic.str(), 10 , &ActionNode::mapCallback, this);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << mergedmaptopic.str());
 
     for (int r = 0; r < n_robots_; r++){
         std::stringstream robotopic;
-        robotopic << rootns << "_" << r << "/" << odom_topic;
+        robotopic << "/" << rootns << "_" << r << "/" << odom_topic;
         odom_sub_[r] = nh_.subscribe<nav_msgs::Odometry>(robotopic.str(), 10, boost::bind(&ActionNode::odomCallback, this, _1, &odoms_[r]));
         ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << robotopic.str());
     }
 
     std::stringstream statustopic;
-    statustopic << rootns << "_" << robot_id_ << "/" << status_topic;
+    statustopic << "/" << rootns << "_" << robot_id_ << "/" << status_topic;
     stat_sub_ = nh_.subscribe(statustopic.str(), 10, &ActionNode::statusCallback, this);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << statustopic.str());
 
     std::stringstream actiontopic;
-    actiontopic << rootns << "_" << robot_id_ << "/" << action_topic;
+    actiontopic << "/" << rootns << "_" << robot_id_ << "/" << action_topic;
     action_pub_ = nh_.advertise<geometry_msgs::Twist>(actiontopic.str(),10);
     rec_map_pub_= nh_.advertise<visualization_msgs::MarkerArray>("rec_map",10);
 }
@@ -152,7 +152,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
 void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-    ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n"<< current_state_);
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
     visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, odoms_[robot_id_]);
     rec_map_pub_.publish(rec_map);
 }
@@ -204,13 +204,16 @@ Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
     Eigen::Map<VectorXd> nn_input(M.data(), M.size());
 
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Network input:\n" << nn_input);
+
     // Evaluate the network with the state as input
     Eigen::Vector3d action = policy_.EvaluateNN(nn_input);
-
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Network output:\n" << action);
     // convert NN output to feasible action on the map
     int t_idx = round(action(0)*n_th_);
     action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
     action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
     action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted action [direction (rad), distance (m), heading (rad)]:\n" << action);
     return action;
 }
