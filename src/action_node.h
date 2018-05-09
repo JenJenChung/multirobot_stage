@@ -148,7 +148,8 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
     if (odom_frame[0]=='/'){odom_frame.erase(0,1);}
     try{
         geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(map_frame, odom_frame, ros::Time(0));
-        tf2::doTransform(msg_in->pose.pose, msg_out->pose.pose, odom_trans);
+        // TODO_ fix linker error re following line
+        // tf2::doTransform(msg_in->pose.pose, msg_out->pose.pose, odom_trans);
         msg_out->header = msg_in->header;
         msg_out->header.frame_id = map_frame;
     }

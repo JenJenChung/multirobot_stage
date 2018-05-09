@@ -4,8 +4,8 @@
 void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::OccupancyGrid const> msg,
              std::string& robot_name) {
     // intercept updates to robot_i/map and publish those to
-    // robot_i/map_in_range whenever the robots are in range to communicate
-    // ROS_INFO("beginning of callback!\n");
+    // robot_i/comms_node/robot_j/map whenever the robots are in range to communicate
+    // ROS_INFO("beginning of callback with robot name: %s!\n", robot_name.c_str());
     float comms_range = 8.0;
 
     // store robot map
@@ -26,6 +26,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
         // TODO: currently only works for n=2 robots
         for (auto &r : _robot_odoms)
         {
+            // if (true)
             if (r.first != robot_name)
             {
                 auto other_robot_position = r.second->pose.pose.position;
@@ -36,11 +37,11 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
                 if (d < comms_range) {
                     ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
                     _map_pubs[robot_name]->publish(_robot_maps[robot_name]);
-                    ROS_INFO("Done publishing %s's map.\n", robot_name.c_str());
+                    // ROS_INFO("Done publishing %s's map.\n", robot_name.c_str());
                     if (_robot_maps.count(r.first) != 0) {
                         ROS_INFO("And publishing %s's map.\n", r.first.c_str());
                         _map_pubs[r.first]->publish(_robot_maps[r.first]);
-                        ROS_INFO("And done publishing %s's map.\n", r.first.c_str());
+                        // ROS_INFO("And done publishing %s's map.\n", r.first.c_str());
                     }
 
                 }
@@ -52,7 +53,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
     }
     else
     {
-        ROS_INFO("Key not found!\n");
+        ROS_INFO("Key %s not found!\n", robot_name.c_str());
     }
 }
 
@@ -61,6 +62,7 @@ void comms_node::OdometryInterceptCallback(const boost::shared_ptr<nav_msgs::Odo
                                std::string &robot_name)
 {
     // _robot_odoms.insert_or_assign(robot_name, msg);  // C++17 only
+    // ROS_INFO("Odom Callback begin with robot name: %s!\n", robot_name.c_str());
     _robot_odoms[robot_name] = msg;
     // ROS_INFO("twist.x: %f\n", _robot_odoms[robot_name]->twist.twist.linear.x);
     // ROS_INFO("OdometryInterceptCallback by %s\n", robot_name.c_str()); 

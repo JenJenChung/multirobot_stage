@@ -32,46 +32,54 @@ class comms_node
         ROS_INFO("num_robots: %d\n", num_robots);
 
         // subscribe to each robots odom, map topics
-        // TODO(bhahn): implement this using a vector of classes with a subscriber
-        // and a publisher for each robot
+        // TODO(bhahn): for each robot i, publish other robot j's map in ns robot_i/comms_node/
         for (uint8_t i = 0; i < num_robots; ++i)
         {
-            std::shared_ptr<ros::Subscriber> temp_map_sub = std::make_shared<ros::Subscriber>() ;
-            std::shared_ptr<ros::Subscriber> temp_odom_sub = std::make_shared<ros::Subscriber>();
-            std::shared_ptr<ros::Publisher> temp_map_pub = std::make_shared<ros::Publisher>();
-            // std::ostringstream robot_name;
-            // robot_name << "robot_" << static_cast<std::string>(i) << "/map";
-            std::string robot_map_topic, robot_odom_topic, robot_map_topic_republished;
-            robot_map_topic = "robot_" + std::to_string(i) + "/map";
-            robot_map_topic_republished = "robot_" + std::to_string(i) + "/map_republished";
-            robot_odom_topic = "robot_" + std::to_string(i) + "/odom";
-            ROS_INFO("robot_map_topic: %s\n", robot_map_topic.c_str());
+            for (uint8_t j = 0; j < num_robots; ++j)
+            {
+                if (true)
+                // if (i != j)
+                {
+                    std::shared_ptr<ros::Subscriber> temp_map_sub = std::make_shared<ros::Subscriber>();
+                    std::shared_ptr<ros::Subscriber> temp_odom_sub = std::make_shared<ros::Subscriber>();
+                    std::shared_ptr<ros::Publisher> temp_map_pub = std::make_shared<ros::Publisher>();
+                    // std::ostringstream robot_name;
+                    // robot_name << "robot_" << static_cast<std::string>(i) << "/map";
+                    std::string robot_map_topic, robot_topic_key, robot_odom_topic, robot_odom_topic_key, robot_map_topic_republished;
+                    robot_map_topic = "robot_" + std::to_string(j) + "/map";
+                    robot_topic_key = "robot_" + std::to_string(i) + std::to_string(j);
+                    robot_map_topic_republished = "robot_" + std::to_string(i) + "/comms_node/robot_" + std::to_string(j) + "/map";
+                    robot_odom_topic = "robot_" + std::to_string(j) + "/odom";
+                    // robot_odom_topic_key = "robot_" + std::to_string(i) + std::to_string(j);
+                    ROS_INFO("robot_map_topic: %s\n", robot_map_topic.c_str());
 
-            // temp_sub = _nh.subscribe(robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback);
-            _robot_names.push_back(robot_map_topic);
-            *temp_map_sub = _nh.subscribe<nav_msgs::OccupancyGrid>(
-                robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback, this, _1, _robot_names.back()));
-            _map_subs.insert(std::make_pair(robot_map_topic, temp_map_sub));
+                    // temp_sub = _nh.subscribe(robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback);
+                    _robot_names.push_back(robot_topic_key);
+                    *temp_map_sub = _nh.subscribe<nav_msgs::OccupancyGrid>(
+                        robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback, this, _1, _robot_names.back()));
+                    _map_subs.insert(std::make_pair(robot_topic_key, temp_map_sub));
 
-            // TODO(bhahn): subscribe to odometry as well to later determine when robots are in range
-            *temp_odom_sub = _nh.subscribe<nav_msgs::Odometry>(
-                robot_odom_topic, 10, boost::bind(&comms_node::OdometryInterceptCallback, this, _1, _robot_names.back()));
-            _odom_subs.insert(std::make_pair(robot_odom_topic, temp_odom_sub));
+                    // TODO(bhahn): subscribe to odometry as well to later determine when robots are in range
+                    *temp_odom_sub = _nh.subscribe<nav_msgs::Odometry>(
+                        robot_odom_topic, 10, boost::bind(&comms_node::OdometryInterceptCallback, this, _1, _robot_names.back()));
+                    _odom_subs.insert(std::make_pair(robot_topic_key, temp_odom_sub));
 
+                    *temp_map_pub = _nh.advertise<nav_msgs::OccupancyGrid>(robot_map_topic_republished, 10);
+                    _map_pubs.insert(std::make_pair(robot_topic_key, temp_map_pub));
 
-            *temp_map_pub = _nh.advertise<nav_msgs::OccupancyGrid>(robot_map_topic_republished, 10);
-            _map_pubs.insert(std::make_pair(robot_map_topic, temp_map_pub));
-            
-            // TODO: publish odom of each robot when in range so other robot can read it
+                    // TODO: publish odom of each robot when in range so other robot can read it
+                }
+            }
         }
     }
 
     ~comms_node() = default;
 
-    void mapInterceptCallback(const boost::shared_ptr<nav_msgs::OccupancyGrid const> msg, std::string& robot_name);
-    void OdometryInterceptCallback(const boost::shared_ptr<nav_msgs::Odometry const> msg, std::string& robot_name);
+    void mapInterceptCallback(const boost::shared_ptr<nav_msgs::OccupancyGrid const> msg, std::string &robot_name);
+    void OdometryInterceptCallback(const boost::shared_ptr<nav_msgs::Odometry const> msg, std::string &robot_name);
 
-    float distance(geometry_msgs::Point p1, geometry_msgs::Point p2) {
+    float distance(geometry_msgs::Point p1, geometry_msgs::Point p2)
+    {
         float x2 = (p1.x - p2.x) * (p1.x - p2.x);
         float y2 = (p1.y - p2.y) * (p1.y - p2.y);
         float z2 = (p1.z - p2.z) * (p1.z - p2.z);
@@ -79,14 +87,14 @@ class comms_node
     }
 
   private:
-        ros::NodeHandle _nh;
+    ros::NodeHandle _nh;
 
-        std::map<std::string, std::shared_ptr<ros::Subscriber>> _map_subs;
-        std::map<std::string, std::shared_ptr<ros::Subscriber>> _odom_subs;
-        std::map<std::string, std::shared_ptr<ros::Publisher>> _map_pubs;
+    std::map<std::string, std::shared_ptr<ros::Subscriber>> _map_subs;
+    std::map<std::string, std::shared_ptr<ros::Subscriber>> _odom_subs;
+    std::map<std::string, std::shared_ptr<ros::Publisher>> _map_pubs;
 
-        std::map<std::string, boost::shared_ptr<nav_msgs::OccupancyGrid const>> _robot_maps;
-        std::map<std::string, boost::shared_ptr<nav_msgs::Odometry const>> _robot_odoms;
+    std::map<std::string, boost::shared_ptr<nav_msgs::OccupancyGrid const>> _robot_maps;
+    std::map<std::string, boost::shared_ptr<nav_msgs::Odometry const>> _robot_odoms;
 
-        std::vector<std::string> _robot_names;
+    std::vector<std::string> _robot_names;
 };
