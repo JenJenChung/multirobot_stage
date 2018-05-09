@@ -6,6 +6,6 @@ int main(int argc, char **argv){
     ROS_INFO("action_node initialized");
     ros::NodeHandle nh;
     ActionNode action_node(nh);
-    ros::spin();
+    action_node.spin();
     return 0;
 }

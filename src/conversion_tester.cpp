@@ -1,4 +1,4 @@
-# include <conversions.h>
+# include <multirobot_stage/conversions.h>
 # include <ros/ros.h>
 
 class ConversionTester{

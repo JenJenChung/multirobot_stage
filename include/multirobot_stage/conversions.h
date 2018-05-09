@@ -1,3 +1,7 @@
+# ifndef CONVERSIONS_H_
+# define CONVERSIONS_H_
+
+
 # include <ros/ros.h>
 # include <math.h>
 # include <algorithm> 
@@ -7,6 +11,7 @@
 # include <geometry_msgs/Twist.h>
 # include <Eigen/Dense>
 # include <eigen_conversions/eigen_msg.h>
+# include <tf/transform_datatypes.h>
 # include <visualization_msgs/MarkerArray.h>
 
 geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
@@ -78,8 +83,23 @@ geometry_msgs::Twist polarToTwist(const Eigen::Vector3d &polar, nav_msgs::Odomet
     out.linear.z = 0;
     out.angular.x = 0;
     out.angular.y = 0;
-    out.angular.z = 180/M_PI*(polar(2) + robot.theta);
+    out.angular.z = std::fmod(180/M_PI*(polar(2) + robot.theta),360);
     return out;
+}
+
+geometry_msgs::Pose polarToPose(const Eigen::Vector3d &polar, nav_msgs::Odometry &odom){
+    geometry_msgs::Pose2D robot = odomToPose2D(odom);
+    geometry_msgs::Pose pose;
+    pose.position.x = cos(polar(0) + robot.theta) * polar(1);
+    pose.position.y = sin(polar(0) + robot.theta) * polar(1);
+    pose.position.z = 0;
+    tf::Quaternion quat;  
+    quat.setEuler(0, 0, std::fmod(180/M_PI*(polar(2) + robot.theta),360));
+    pose.orientation.x = quat.x();
+    pose.orientation.y = quat.y();
+    pose.orientation.z = quat.z();
+    pose.orientation.w = quat.w();
+    return pose;
 }
 
 visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar, nav_msgs::Odometry &odom, double res=0.005){
@@ -129,3 +149,5 @@ visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar,
     }
     return markers;
 }
+
+#endif // CONVERSIONS_H_
