@@ -29,8 +29,6 @@ pid="$pid $!"
 rosrun multirobot_stage comms_node
 pid="$pid $!"
 
-# roslaunch multirobot_stage multirobot_map_merge.launch &
-# pid="$pid $!"
 # =========== END ROS simulation nodes =========== 
 
 echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt

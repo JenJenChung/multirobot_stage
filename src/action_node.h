@@ -157,9 +157,11 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
     if (map_frame[0]=='/'){map_frame.erase(0,1);}
     if (odom_frame[0]=='/'){odom_frame.erase(0,1);}
     try{
-        geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(map_frame, odom_frame, ros::Time(0));
+        geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(odom_frame, map_frame, ros::Time(0));
         tf2::doTransform(msg_in->pose.pose, msg_out->pose.pose, odom_trans);
         msg_out->header = msg_in->header;
+        if (map_frame[0]!='/'){map_frame.insert(0,"/");}
+        ROS_WARN_STREAM("Odoms frame_id: " << map_frame);
         msg_out->header.frame_id = map_frame;
     }
     catch (tf2::TransformException &ex) {
@@ -170,8 +172,8 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
 
 move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     move_base_msgs::MoveBaseGoal goal;
-    goal.target_pose.header.frame_id = "/map";// merged_map_->header.frame_id; //merged_map_->header.frame_id;
-    ROS_WARN_STREAM("Merged map frame_id: " << merged_map_->header.frame_id);
+    ROS_WARN_STREAM("Odoms frame_id: " << odoms_[robot_id_].header.frame_id);
+    goal.target_pose.header.frame_id = odoms_[robot_id_].header.frame_id;
     goal.target_pose.header.stamp = ros::Time::now() ;
 
     Eigen::Vector3d action = getAction(current_state_);
@@ -210,24 +212,30 @@ void ActionNode::actionThread(){
     }
     ros::Rate r(5);
     while (ros::ok){
-        if (goal_state && merged_map_){
-            if (goal_state->isDone()){  //
-                ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
-                *goal_state = ac.sendGoalAndWait(getGoal());
+        r.sleep();
+        if (!merged_map_->header.frame_id.empty()){
+            if (goal_state){
+                if (goal_state->isDone()){  //
+                    ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
+                    *goal_state = ac.sendGoalAndWait(getGoal());
+                    if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
+                        ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
+                    } else {
+                        ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
+                    }
+                }
+            } else {
+                ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
+                goal_state = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
             }
-        } else if (merged_map_) {
-            ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
-            goal_state = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
+            if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
+                ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
+            } else {
+                ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
+            }
         } else {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
         }
-
-        if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
-            ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
-        } else {
-            ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
-        }
-        r.sleep();
     }
 }
 
