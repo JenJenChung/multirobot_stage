@@ -26,6 +26,9 @@ done
 roslaunch multirobot_stage rewards_node.launch &
 pid="$pid $!"
 
+rosrun multirobot_stage comms_node
+pid="$pid $!"
+
 # roslaunch multirobot_stage multirobot_map_merge.launch &
 # pid="$pid $!"
 # =========== END ROS simulation nodes =========== 
@@ -35,3 +38,6 @@ echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt
 # =========== START Learning epoch timer ===========
 rosparam load $(rospack find multirobot_stage)/scripts/learning_params.yaml
 rosrun multirobot_stage learning_episode_timer &
+
+trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
+
