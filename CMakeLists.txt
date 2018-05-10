@@ -46,14 +46,12 @@ add_dependencies(bouncer ${catkin_EXPORTED_TARGETS})
 add_executable(conversion_tester src/conversion_tester.cpp)
 target_link_libraries(conversion_tester
                       ${catkin_LIBRARIES}
-                      ${Eigen3_LIBRARIES}
-                      m)
+                      ${Eigen3_LIBRARIES})
 
 add_executable(action_node src/action_node.cpp)
 target_link_libraries(action_node
                       ${catkin_LIBRARIES}
-                      ${Eigen3_LIBRARIES}
-                      m)
+                      ${Eigen3_LIBRARIES})
 
 add_executable(robot_map src/robot_costmap.cpp)
 target_link_libraries(robot_map ${catkin_LIBRARIES})
@@ -63,9 +61,9 @@ add_executable(learning_episode_timer src/learning_episode_timer.cpp)
 target_link_libraries(learning_episode_timer ${catkin_LIBRARIES})
 add_dependencies(learning_episode_timer ${catkin_EXPORTED_TARGETS})
 
-#add_executable(comms_node src/comms_node.cpp)
-#target_link_libraries(comms_node ${catkin_LIBRARIES})
-#add_dependencies(comms_node ${catkin_EXPORTED_TARGETS})
+add_executable(comms_node src/comms_node.cpp)
+target_link_libraries(comms_node ${catkin_LIBRARIES})
+add_dependencies(comms_node ${catkin_EXPORTED_TARGETS})
 
 add_executable(multiRobotNE src/multiRobotNE.cpp)
 target_link_libraries(multiRobotNE ${catkin_LIBRARIES})
