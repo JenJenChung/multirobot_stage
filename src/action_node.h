@@ -61,8 +61,6 @@ class ActionNode{
         ros::NodeHandle nh_;
 
         Eigen::MatrixXd current_state_;
-        actionlib::SimpleClientGoalState *goal_state_; 
-
         nav_msgs::OccupancyGrid *merged_map_;
         nav_msgs::Odometry *odoms_;
 
@@ -128,7 +126,6 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     odom_sub_ = new ros::Subscriber[n_robots_];
 
     current_state_ = Eigen::MatrixXd::Zero(n_th_,2+n_robots_);
-    goal_state_ = NULL;
     
     // Initialize Subscribers and Publishers
     std::stringstream mergedmaptopic;
@@ -172,8 +169,9 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
 }
 
 move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
-    move_base_msgs::MoveBaseGoal goal ;
-    goal.target_pose.header.frame_id = "/map" ;
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "/map";// merged_map_->header.frame_id; //merged_map_->header.frame_id;
+    ROS_WARN_STREAM("Merged map frame_id: " << merged_map_->header.frame_id);
     goal.target_pose.header.stamp = ros::Time::now() ;
 
     Eigen::Vector3d action = getAction(current_state_);
@@ -186,49 +184,47 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
 
 Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     // This method outputs an action belonging to a state according to the loaded policy
-    // Slice the state (remove the bearing column) and reshape the state into a vector
-    ROS_INFO_STREAM("Number of rows:\n"<<state.rows()<<std::endl<<"Number of cols:\n"<<state.cols());
+    // Slice the state (remove the bearing column) and reshape the state into a vector, then scale it by maximum value
     Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
     Eigen::Map<VectorXd> nn_input(M.data(), M.size());
-
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Network input:\n" << nn_input);
-
-    // Evaluate the network with the state as input
-    Eigen::Vector3d action = policy_.EvaluateNN(nn_input);
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Network output:\n" << action);
+    Eigen::Vector3d action;
+    if (nn_input.maxCoeff()!=0){
+        nn_input = nn_input/nn_input.maxCoeff();
+        // Evaluate the network with the state as input
+        action = policy_.EvaluateNN(nn_input);
+    } else {
+        action << 0, 0, 0;
+        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input to neural net. Performing 0 action");
+    }
     // convert NN output to feasible action on the map
     int t_idx = round(action(0)*n_th_);
     action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
     action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
     action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
-    ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted action [rel. direction (rad), distance (m), rel. heading (rad)]:\n" << action);
     return action;
 }
 
 void ActionNode::actionThread(){
-    //tell the action client that we want to spin a thread by default
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac("move_base",true) ;
-    
-    //wait for the action server to come up
+    actionlib::SimpleClientGoalState *goal_state = NULL; 
     while(!ac.waitForServer(ros::Duration(5.0))){
-        ROS_INFO("Waiting for the move_base action server to come up");
+        ROS_INFO_STREAM("Robot " << robot_id_ << ": Waiting for the move_base action server to come up");
     }
-
-    ros::Rate r(10);
+    ros::Rate r(5);
     while (ros::ok){
-        if (goal_state_ && merged_map_){
-            if (goal_state_->isDone()){  //
+        if (goal_state && merged_map_){
+            if (goal_state->isDone()){  //
                 ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
-                *goal_state_ = ac.sendGoalAndWait(getGoal());
+                *goal_state = ac.sendGoalAndWait(getGoal());
             }
         } else if (merged_map_) {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
-            goal_state_ = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
+            goal_state = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
         } else {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
         }
 
-        if(*goal_state_ == actionlib::SimpleClientGoalState::SUCCEEDED){
+        if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
             ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
         } else {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
