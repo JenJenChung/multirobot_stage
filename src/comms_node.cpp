@@ -5,7 +5,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
              std::string& robot_name) {
     // intercept updates to robot_i/map and publish those to
     // robot_i/comms_node/robot_j/map whenever the robots are in range to communicate
-    // ROS_INFO("beginning of callback with robot name: %s!\n", robot_name.c_str());
+    ROS_INFO("beginning of callback with robot name: %s!\n", robot_name.c_str());
     float comms_range = 8.0;
 
     // store robot map
@@ -26,6 +26,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
         // TODO: currently only works for n=2 robots
         for (auto &r : _robot_odoms)
         {
+            ROS_INFO("Looking at robot: %s\n", r.first.c_str());
             // if (true)
             if (r.first != robot_name)
             {
@@ -33,11 +34,14 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
                 float d = distance(callback_robot_position, other_robot_position);
                 ROS_INFO("Distance from %s to %s: %f", robot_name.c_str(), r.first.c_str(), d);
 
+                // always publish map from robot whose callback was called
+                ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
+                _map_pubs[robot_name]->publish(_robot_maps[robot_name]);
                 // publish callback_robot and other_robot's maps such that they can be merged if close enough for communication
                 if (d < comms_range) {
-                    ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
-                    _map_pubs[robot_name]->publish(_robot_maps[robot_name]);
-                    // ROS_INFO("Done publishing %s's map.\n", robot_name.c_str());
+                    // TODO: problem: currently this publishes 3x for 2 robots, i.e. if it's callback 00, 
+                    // he publishes for 01, 10 and 11 when it should actually only publish for 01 or 10.
+                    // publish other robot's map if nearby
                     if (_robot_maps.count(r.first) != 0) {
                         ROS_INFO("And publishing %s's map.\n", r.first.c_str());
                         _map_pubs[r.first]->publish(_robot_maps[r.first]);
@@ -55,6 +59,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
     {
         ROS_INFO("Key %s not found!\n", robot_name.c_str());
     }
+    ROS_INFO("End of callback!\n");
 }
 
 // store most recent odom for each robot
