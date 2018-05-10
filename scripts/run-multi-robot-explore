@@ -17,13 +17,17 @@ do
   pid="$pid $!"
 
   roslaunch multirobot_stage action_node.launch robot_id:=$i &
+  pid="$pid $!"
+
+  roslaunch multirobot_stage multirobot_map_merge.launch robot_name:=robot_$i &
+  pid="$pid $!"
 done
 
 roslaunch multirobot_stage rewards_node.launch &
 pid="$pid $!"
 
-roslaunch multirobot_stage multirobot_map_merge.launch &
-pid="$pid $!"
+# roslaunch multirobot_stage multirobot_map_merge.launch &
+# pid="$pid $!"
 # =========== END ROS simulation nodes =========== 
 
 echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt
