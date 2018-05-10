@@ -161,7 +161,6 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
         tf2::doTransform(msg_in->pose.pose, msg_out->pose.pose, odom_trans);
         msg_out->header = msg_in->header;
         if (map_frame[0]!='/'){map_frame.insert(0,"/");}
-        ROS_WARN_STREAM("Odoms frame_id: " << map_frame);
         msg_out->header.frame_id = map_frame;
     }
     catch (tf2::TransformException &ex) {
@@ -172,7 +171,6 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
 
 move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     move_base_msgs::MoveBaseGoal goal;
-    ROS_WARN_STREAM("Odoms frame_id: " << odoms_[robot_id_].header.frame_id);
     goal.target_pose.header.frame_id = odoms_[robot_id_].header.frame_id;
     goal.target_pose.header.stamp = ros::Time::now() ;
 
@@ -235,6 +233,7 @@ void ActionNode::actionThread(){
             }
         } else {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
+            ros::Duration(1.0).sleep();
         }
     }
 }
