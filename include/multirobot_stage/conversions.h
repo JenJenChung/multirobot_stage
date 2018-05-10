@@ -78,8 +78,8 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometr
 geometry_msgs::Twist polarToTwist(const Eigen::Vector3d &polar, nav_msgs::Odometry &odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     geometry_msgs::Twist out;
-    out.linear.x = cos(polar(0) + robot.theta) * polar(1);
-    out.linear.y = sin(polar(0) + robot.theta) * polar(1);
+    out.linear.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
+    out.linear.y = sin(polar(0) + robot.theta) * polar(1) + robot.y;
     out.linear.z = 0;
     out.angular.x = 0;
     out.angular.y = 0;
@@ -90,8 +90,8 @@ geometry_msgs::Twist polarToTwist(const Eigen::Vector3d &polar, nav_msgs::Odomet
 geometry_msgs::Pose polarToPose(const Eigen::Vector3d &polar, nav_msgs::Odometry &odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     geometry_msgs::Pose pose;
-    pose.position.x = cos(polar(0) + robot.theta) * polar(1);
-    pose.position.y = sin(polar(0) + robot.theta) * polar(1);
+    pose.position.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
+    pose.position.y = sin(polar(0) + robot.theta) * polar(1) + robot.y;
     pose.position.z = 0;
     tf::Quaternion quat;  
     quat.setEuler(0, 0, std::fmod(180/M_PI*(polar(2) + robot.theta),360));

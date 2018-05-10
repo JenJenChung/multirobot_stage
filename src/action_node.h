@@ -85,7 +85,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.param<int>("robot_id", robot_id_, 0);
     nh_.param<int>("/learning/nRob", n_robots_, 1);
 
-    std::string rootns, merged_map_topic, odom_topic; //, action_topic, status_topic;
+    std::string rootns, merged_map_topic, odom_topic;
     nh_.param<std::string>("root_namespace", rootns, "robot");
     nh_.param<std::string>("merged_map_topic", merged_map_topic, "map");
     nh_.param<std::string>("odom_topic", odom_topic, "odom");
@@ -175,7 +175,7 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     goal.target_pose.header.stamp = ros::Time::now() ;
 
     Eigen::Vector3d action = getAction(current_state_);
-    goal.target_pose.pose = polarToPose(action,odoms_[robot_id_]);
+    goal.target_pose.pose = polarToPose(action, odoms_[robot_id_]);
 
     geometry_msgs::Twist waypoint = polarToTwist(action, odoms_[robot_id_]);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted waypoint (geometry_msgs/Twist):\n" << waypoint);
