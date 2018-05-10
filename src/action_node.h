@@ -184,14 +184,12 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
 
 Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     // This method outputs an action belonging to a state according to the loaded policy
-    // Slice the state (remove the bearing column) and reshape the state into a vector, then scale it by maximum value
     Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
     Eigen::Map<VectorXd> nn_input(M.data(), M.size());
     Eigen::Vector3d action;
     if (nn_input.maxCoeff()!=0){
-        nn_input = nn_input/nn_input.maxCoeff();
-        // Evaluate the network with the state as input
-        action = policy_.EvaluateNN(nn_input);
+        nn_input = nn_input/nn_input.maxCoeff(); // scale input
+        action = policy_.EvaluateNN(nn_input); // Evaluate the network with the state as input
     } else {
         action << 0, 0, 0;
         ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input to neural net. Performing 0 action");
