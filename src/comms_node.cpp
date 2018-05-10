@@ -24,27 +24,30 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
 
         // calculate distance to all other robots
         // TODO: currently only works for n=2 robots
-        for (auto &r : _robot_odoms)
+        for (auto &r : _robot_names)
         {
-            ROS_INFO("Looking at robot: %s\n", r.first.c_str());
+            ROS_INFO("Looking at robot: %s\n", r.c_str());
             // if (true)
-            if (r.first != robot_name)
+            if (r != robot_name)
             {
-                auto other_robot_position = r.second->pose.pose.position;
+                auto other_robot_position = _robot_odoms[r]->pose.pose.position;
                 float d = distance(callback_robot_position, other_robot_position);
-                ROS_INFO("Distance from %s to %s: %f", robot_name.c_str(), r.first.c_str(), d);
+                ROS_INFO("Distance from %s to %s: %f", robot_name.c_str(), r.c_str(), d);
 
                 // always publish map from robot whose callback was called
                 ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
-                _map_pubs[robot_name]->publish(_robot_maps[robot_name]);
+                std::string callback_robot_topic = robot_name + robot_name; // i since callback robot is j
+                _map_pubs[callback_robot_topic]->publish(_robot_maps[robot_name]);
                 // publish callback_robot and other_robot's maps such that they can be merged if close enough for communication
-                if (d < comms_range) {
-                    // TODO: problem: currently this publishes 3x for 2 robots, i.e. if it's callback 00, 
+                if (d < comms_range)
+                {
+                    // TODO: problem: currently this publishes 3x for 2 robots, i.e. if it's callback 00,
                     // he publishes for 01, 10 and 11 when it should actually only publish for 01 or 10.
                     // publish other robot's map if nearby
-                    if (_robot_maps.count(r.first) != 0) {
-                        ROS_INFO("And publishing %s's map.\n", r.first.c_str());
-                        _map_pubs[r.first]->publish(_robot_maps[r.first]);
+                    if (_robot_maps.count(r) != 0) {
+                        callback_robot_topic = robot_name + r; // 
+                        ROS_INFO("And publishing %s's map.\n", r.c_str());
+                        _map_pubs[callback_robot_topic]->publish(_robot_maps[r]);
                         // ROS_INFO("And done publishing %s's map.\n", r.first.c_str());
                     }
 

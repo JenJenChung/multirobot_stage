@@ -33,43 +33,47 @@ class comms_node
 
         // subscribe to each robots odom, map topics
         // TODO(bhahn): for each robot i, publish other robot j's map in ns robot_i/comms_node/
-        for (uint8_t i = 0; i < num_robots; ++i)
-        {
-            for (uint8_t j = 0; j < num_robots; ++j)
-            {
-                if (true)
-                // if (i != j)
-                {
-                    std::shared_ptr<ros::Subscriber> temp_map_sub = std::make_shared<ros::Subscriber>();
-                    std::shared_ptr<ros::Subscriber> temp_odom_sub = std::make_shared<ros::Subscriber>();
-                    std::shared_ptr<ros::Publisher> temp_map_pub = std::make_shared<ros::Publisher>();
-                    // std::ostringstream robot_name;
-                    // robot_name << "robot_" << static_cast<std::string>(i) << "/map";
-                    std::string robot_map_topic, robot_topic_key, robot_odom_topic, robot_odom_topic_key, robot_map_topic_republished;
-                    robot_map_topic = "robot_" + std::to_string(j) + "/map";
-                    robot_topic_key = "robot_" + std::to_string(i) + std::to_string(j);
-                    robot_map_topic_republished = "robot_" + std::to_string(i) + "/comms_node/robot_" + std::to_string(j) + "/map";
-                    robot_odom_topic = "robot_" + std::to_string(j) + "/odom";
-                    // robot_odom_topic_key = "robot_" + std::to_string(i) + std::to_string(j);
-                    ROS_INFO("robot_map_topic: %s\n", robot_map_topic.c_str());
+        for (uint8_t i = 0; i < num_robots; ++i) {
+          for (uint8_t j = 0; j < num_robots; ++j) {
+            std::string robot_id, other_robot_id, robot_map_topic, robot_pub_topic_key, robot_odom_topic,
+                robot_odom_topic_key, robot_map_topic_republished;
+            robot_id = "robot_" + std::to_string(j);
+            other_robot_id = "robot_" + std::to_string(i);
+            robot_pub_topic_key = robot_id + other_robot_id;
+            robot_map_topic = "robot_" + std::to_string(j) + "/map";
+            robot_map_topic_republished =
+                "robot_" + std::to_string(j) + "/comms_node/robot_" + std::to_string(i) + "/map";
+            robot_odom_topic = "robot_" + std::to_string(j) + "/odom";
+            // if (true)
+            if (i != j) {
+              std::shared_ptr<ros::Subscriber> temp_map_sub = std::make_shared<ros::Subscriber>();
+              std::shared_ptr<ros::Subscriber> temp_odom_sub = std::make_shared<ros::Subscriber>();
+              // robot_odom_topic_key = "robot_" + std::to_string(i) + std::to_string(j);
+              ROS_INFO("robot_map_topic: %s\n", robot_map_topic.c_str());
 
-                    // temp_sub = _nh.subscribe(robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback);
-                    _robot_names.push_back(robot_topic_key);
-                    *temp_map_sub = _nh.subscribe<nav_msgs::OccupancyGrid>(
-                        robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback, this, _1, _robot_names.back()));
-                    _map_subs.insert(std::make_pair(robot_topic_key, temp_map_sub));
+              // temp_sub = _nh.subscribe(robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback);
+              _robot_names.push_back(robot_id);
+              *temp_map_sub = _nh.subscribe<nav_msgs::OccupancyGrid>(
+                  robot_map_topic, 10, boost::bind(&comms_node::mapInterceptCallback, this, _1, _robot_names.back()));
+              _map_subs.insert(std::make_pair(robot_id, temp_map_sub));
 
-                    // TODO(bhahn): subscribe to odometry as well to later determine when robots are in range
-                    *temp_odom_sub = _nh.subscribe<nav_msgs::Odometry>(
-                        robot_odom_topic, 10, boost::bind(&comms_node::OdometryInterceptCallback, this, _1, _robot_names.back()));
-                    _odom_subs.insert(std::make_pair(robot_topic_key, temp_odom_sub));
-
-                    *temp_map_pub = _nh.advertise<nav_msgs::OccupancyGrid>(robot_map_topic_republished, 10);
-                    _map_pubs.insert(std::make_pair(robot_topic_key, temp_map_pub));
-
-                    // TODO: publish odom of each robot when in range so other robot can read it
-                }
+              // TODO(bhahn): currently subscribing to odom 4 times, only need 2 but then have to fix the issue that
+              // we'd use a different key. same with map_subs. Actually only need 4 pubs, right? And 4 odom pubs.
+              //
+              *temp_odom_sub = _nh.subscribe<nav_msgs::Odometry>(
+                  robot_odom_topic, 10,
+                  boost::bind(&comms_node::OdometryInterceptCallback, this, _1, _robot_names.back()));
+              _odom_subs.insert(std::make_pair(robot_id, temp_odom_sub));
             }
+
+            ROS_INFO("Creating published for map %s with key %s\n", robot_map_topic_republished.c_str(),
+                     robot_pub_topic_key.c_str());
+            std::shared_ptr<ros::Publisher> temp_map_pub = std::make_shared<ros::Publisher>();
+            *temp_map_pub = _nh.advertise<nav_msgs::OccupancyGrid>(robot_map_topic_republished, 10);
+            _map_pubs.insert(std::make_pair(robot_pub_topic_key, temp_map_pub));
+
+            // TODO: publish odom of each robot when in range so other robot can read it
+          }
         }
     }
 
@@ -78,12 +82,11 @@ class comms_node
     void mapInterceptCallback(const boost::shared_ptr<nav_msgs::OccupancyGrid const> msg, std::string &robot_name);
     void OdometryInterceptCallback(const boost::shared_ptr<nav_msgs::Odometry const> msg, std::string &robot_name);
 
-    float distance(geometry_msgs::Point p1, geometry_msgs::Point p2)
-    {
-        float x2 = (p1.x - p2.x) * (p1.x - p2.x);
-        float y2 = (p1.y - p2.y) * (p1.y - p2.y);
-        float z2 = (p1.z - p2.z) * (p1.z - p2.z);
-        return sqrt(x2 + y2 + z2);
+    float distance(geometry_msgs::Point p1, geometry_msgs::Point p2) {
+      float x2 = (p1.x - p2.x) * (p1.x - p2.x);
+      float y2 = (p1.y - p2.y) * (p1.y - p2.y);
+      float z2 = (p1.z - p2.z) * (p1.z - p2.z);
+      return sqrt(x2 + y2 + z2);
     }
 
   private:
