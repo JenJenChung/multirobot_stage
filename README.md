@@ -45,20 +45,25 @@ multirobot_map_merge [Github](https://github.com/hrnr/m-explore) and as a [ROS P
 
 <h2>Nodes:</h2>
 In addition to the nodes provided by multirobot_stage there are:
+
 * multirobot_learning:
     The node which manages the learning part of the package. It starts and stops episodes and executes the learning algorithm, in this case neuroevolution.
+    
 * comms_node:
     The nodes manages the communication of maps and odometries between the robots. It can be used to simulate limited communications range.  
+    
 * rewards_node:
     continuosly calculates the reward (area of the explored map) for the learning
+    
 * action_node (one per robot):
     takes a state (projection of frontiers and obstacles and position of other robots) and a policy (a neural net) and calculates the new waypoint goal which is passed to move_base. 
+    
 * multirobot_map_merg (one per robot)
     merges the internal map of each robot with the maps of the other robots. 
     
 <h2>Commands:</h2>
 To run the exploration instance, run:
-<pre><code>rosrun multirobot_stage run-multi-robot-exploration <nRob> <headless></code></pre>
+<pre><code>rosrun multirobot_stage run-multi-robot-exploration *nRob* *headless*</code></pre>
 
 To run the learning instance, run:
-<pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=<nRob> -headless:=<true/false></code></pre>
+<pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=*nRob* -headless:=*true/false*</code></pre>
