@@ -60,13 +60,13 @@ In addition to the nodes provided by multirobot_stage there are:
 * action_node (one per robot):
     takes a state (projection of frontiers and obstacles and position of other robots) and a policy (a neural net) and calculates the new waypoint goal which is passed to move_base. 
     
-* multirobot_map_merg (one per robot)
+* multirobot_map_merge (one per robot):
     merges the internal map of each robot with the maps of the other robots. 
     
 <h2>Commands:</h2>
 
 To run the exploration instance, run:
-<pre><code>rosrun multirobot_stage run-multi-robot-exploration 2 0</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (1) or not (0).
+<pre><code>rosrun multirobot_stage run-multi-robot-exploration 2 0</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (1) or not (0). Currently this does not run in standalone because no valid neural network weights are passed as parameters during launch.
 
- To run the learning instance, run:
+To run the learning instance, run:
 <pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=2 -headless:=false</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (true) or not (false).
