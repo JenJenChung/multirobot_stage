@@ -31,6 +31,7 @@ catkin_package(
   CATKIN_DEPENDS gmapping move_base roscpp rospy rviz stage_ros
                   std_msgs geometry_msgs sensor_msgs nav_msgs
                   tf tf2_ros tf2_geometry_msgs eigen_conversions costmap_2d
+                  simple_navigation_goals multirobot_map_merge
   DEPENDS system_lib
 )
 
