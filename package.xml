@@ -58,6 +58,8 @@
   <build_depend>actionlib</build_depend>
   <build_depend>simple_navigation_goals</build_depend>
   <build_depend>multirobot_map_merge</build_depend>
+  <build_depend>nav_bundle</build_depend>
+  <build_depend>stagebot_2dnav</build_depend>
   <run_depend>gmapping</run_depend>
   <run_depend>move_base</run_depend>
   <run_depend>roscpp</run_depend>
@@ -76,6 +78,8 @@
   <run_depend>actionlib</run_depend>
   <run_depend>simple_navigation_goals</run_depend>
   <run_depend>multirobot_map_merge</run_depend>
+  <run_depend>nav_bundle</run_depend>
+  <run_depend>stagebot_2dnav</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
