@@ -164,8 +164,6 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, nav_ms
         tf2::doTransform(pose_in, pose_out, odom_trans);
         msg_out->pose.pose = pose_out.pose;
         msg_out->header = pose_out.header;
-        if (map_frame[0]!='/'){map_frame.insert(0,"/");}
-        msg_out->header.frame_id = map_frame;
     }
     catch (tf2::TransformException &ex) {
         ROS_WARN("%s",ex.what());

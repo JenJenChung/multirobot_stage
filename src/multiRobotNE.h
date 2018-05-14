@@ -19,6 +19,7 @@ class MultiRobotNE{
     MultiRobotNE(ros::NodeHandle) ;
     ~MultiRobotNE() ;
   private:
+    bool headless;
     int nRob ;     // number of robots
     int nIn ;      // input state vector size
     int nOut ;     // output action vector size
@@ -51,6 +52,7 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   // Initialise learning domain
   // Domain contains 2 NeuroEvo agents, each agent maintains a population of policies which are encoded as neural networks
   // Neural networks are initialised according to size of input and output vectors, number of nodes in the hidden layer, and the activation function
+  ros::param::get("headless", headless);
   ros::param::get("/learning/nRob", nRob);
   ros::param::get("/learning/nIn", nIn);
   ros::param::get("/learning/nOut", nOut);
@@ -196,10 +198,10 @@ void MultiRobotNE::NewEpisode(){
     // This implementation expects the reward to be written to a rosparam
     // Simulation timer will automatically terminal the episode
     if (nRob>1){
-      std::string command = "rosrun multirobot_stage run-multi-robot-explore " + std::to_string(nRob);
+      std::string command = "rosrun multirobot_stage run-multi-robot-explore " + std::to_string(nRob) + " " + std::to_string(headless);
       system(command.c_str()) ;
     } else {
-      std::string command = "rosrun multirobot_stage run-single-robot-explore " + std::to_string(nRob);
+      std::string command = "rosrun multirobot_stage run-single-robot-explore " + std::to_string(nRob) + " " + std::to_string(headless);
       system(command.c_str()) ;
     }
   }
