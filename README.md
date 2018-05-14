@@ -36,3 +36,20 @@ To run the default simulation with two robots, run:
 Command waypoints to the robots by sending Twist messages to /robot_0/map_goal and /robot_1/map_goal, e.g.
 
 <pre><code>rostopic pub /robot_1/map_goal geometry_msgs/Twist '[20, 20, 0]' '[0, 0, 0]' -1</pre></code>
+
+# multirobot_learning
+Multi-agent reinforcement learning (MARL) for exploration and mapping based on multirobot_stage. Developed as part of the course Perception and Learning for Robotics at ETH Zürich in Spring 2018, by Benjamin Hahn and Julian von der Goltz, supervised by Jen Jen Chung.
+
+In addition to the nodes provided by multirobot_stage there are:
+* multirobot_learning:
+
+    The node which manages the learning part of the package. It starts and stops episodes and executes the learning algorithm, in this case neuroevolution.
+* comms_node:
+
+    
+    
+* rewards_node:
+* action_node (one per robot):
+* multirobot_map_merging (one per robot)
+
+    available on [Github](https://github.com/hrnr/m-explore) and as a [ROS Package](http://wiki.ros.org/multirobot_map_merge)
