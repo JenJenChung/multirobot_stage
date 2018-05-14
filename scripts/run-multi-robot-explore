@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # =========== START ROS simulation nodes =========== 
-echo "Launching Stage..."
+N_ROBOTS=$1
+echo "Launching Stage with $N_ROBOTS robots..."
 roslaunch multirobot_stage multirobot_stage.launch &
 # roslaunch multirobot_stage multirobot_stage_headless.launch &
 pid=$!
 
-echo "Launching navigation stack..."
+echo "Launching navigation stack...$[N_ROBOTS-1]"
 sleep 2s
-for i in `seq 0 1`;
+for i in `seq 0 $[N_ROBOTS-1]`;
 do
   roslaunch nav_bundle single_slam.launch robot_name:=robot_$i &
   pid="$pid $!"
@@ -23,7 +24,7 @@ do
   pid="$pid $!"
 done
 
-roslaunch multirobot_stage rewards_node.launch &
+roslaunch multirobot_stage rewards_node.launch nRob:=$N_ROBOTS &
 pid="$pid $!"
 
 rosrun multirobot_stage comms_node

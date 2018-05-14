@@ -196,9 +196,11 @@ void MultiRobotNE::NewEpisode(){
     // This implementation expects the reward to be written to a rosparam
     // Simulation timer will automatically terminal the episode
     if (nRob>1){
-      system("rosrun multirobot_stage run-multi-robot-explore") ;
+      std::string command = "rosrun multirobot_stage run-multi-robot-explore " + std::to_string(nRob);
+      system(command.c_str()) ;
     } else {
-      system("rosrun multirobot_stage run-single-robot-explore") ;
+      std::string command = "rosrun multirobot_stage run-single-robot-explore " + std::to_string(nRob);
+      system(command.c_str()) ;
     }
   }
   else{
