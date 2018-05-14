@@ -42,7 +42,7 @@ Multi-agent reinforcement learning (MARL) for exploration and mapping based on m
 
 <h2>Package dependencies:</h2>
 
-multirobot_map_merge: Available on [Github](https://github.com/hrnr/m-explore) and as a [ROS Package](http://wiki.ros.org/multirobot_map_merge)
+* multirobot_map_merge: Available on [Github](https://github.com/hrnr/m-explore) and as a [ROS Package](http://wiki.ros.org/multirobot_map_merge)
 
 <h2>Nodes:</h2>
 
@@ -67,6 +67,7 @@ In addition to the nodes provided by multirobot_stage there are:
 
 To run the exploration instance, run:
 <pre><code>rosrun multirobot_stage run-multi-robot-exploration 2 0</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (1) or not (0). Currently this does not run in standalone because no valid neural network weights are passed as parameters during launch.
+
 
 To run the learning instance, run:
 <pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=2 -headless:=false</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (true) or not (false).
