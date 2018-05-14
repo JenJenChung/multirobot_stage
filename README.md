@@ -42,7 +42,7 @@ Multi-agent reinforcement learning (MARL) for exploration and mapping based on m
 
 <h2>Package dependencies:</h2>
 
-multirobot_map_merge [Github](https://github.com/hrnr/m-explore) and as a [ROS Package](http://wiki.ros.org/multirobot_map_merge)
+multirobot_map_merge: Available on [Github](https://github.com/hrnr/m-explore) and as a [ROS Package](http://wiki.ros.org/multirobot_map_merge)
 
 <h2>Nodes:</h2>
 
