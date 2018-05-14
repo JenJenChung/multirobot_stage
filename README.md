@@ -41,9 +41,11 @@ Command waypoints to the robots by sending Twist messages to /robot_0/map_goal a
 Multi-agent reinforcement learning (MARL) for exploration and mapping based on multirobot_stage. Developed as part of the course Perception and Learning for Robotics at ETH Zürich in Spring 2018, by Benjamin Hahn and Julian von der Goltz, supervised by Jen Jen Chung.
 
 <h2>Package dependencies:</h2>
+
 multirobot_map_merge [Github](https://github.com/hrnr/m-explore) and as a [ROS Package](http://wiki.ros.org/multirobot_map_merge)
 
 <h2>Nodes:</h2>
+
 In addition to the nodes provided by multirobot_stage there are:
 
 * multirobot_learning:
@@ -62,8 +64,9 @@ In addition to the nodes provided by multirobot_stage there are:
     merges the internal map of each robot with the maps of the other robots. 
     
 <h2>Commands:</h2>
-To run the exploration instance, run:
-<pre><code>rosrun multirobot_stage run-multi-robot-exploration *nRob* *headless*</code></pre>
 
-To run the learning instance, run:
-<pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=*nRob* -headless:=*true/false*</code></pre>
+To run the exploration instance, run:
+<pre><code>rosrun multirobot_stage run-multi-robot-exploration 2 0</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (1) or not (0).
+
+ To run the learning instance, run:
+<pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=2 -headless:=false</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (true) or not (false).
