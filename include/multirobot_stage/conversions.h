@@ -25,11 +25,11 @@ geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
     return pose;
 }
 
-Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometry *odoms, int robot_id, int n_robots, int n_th=4, double thresh=50){
+Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::shared_ptr<nav_msgs::Odometry>> odoms, int robot_id, int n_robots, int n_th=4, double thresh=50){
     Eigen::MatrixXd polar = Eigen::MatrixXd::Zero(n_th,2+n_robots);
     double res = map.info.resolution;
     geometry_msgs::Point origin = map.info.origin.position;
-    geometry_msgs::Pose2D robot = odomToPose2D(odoms[robot_id]);
+    geometry_msgs::Pose2D robot = odomToPose2D(*(odoms[robot_id]));
     double theta;
     int l = 0;
     int b = 0;
@@ -62,7 +62,7 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, nav_msgs::Odometr
     int r_idx = 3;
     for (int r = 0; r<n_robots; r++){
         if (r!=robot_id){
-            geometry_msgs::Pose2D other_robot = odomToPose2D(odoms[r]);
+            geometry_msgs::Pose2D other_robot = odomToPose2D(*(odoms[r]));
             double dx = other_robot.x-robot.x;
             double dy = other_robot.y-robot.y;
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot

@@ -24,10 +24,10 @@ do
   roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
   pid="$pid $!"
 
-  roslaunch multirobot_stage action_node.launch robot_id:=$i &
+  roslaunch multirobot_stage multirobot_map_merge.launch robot_name:=robot_$i &
   pid="$pid $!"
 
-  roslaunch multirobot_stage multirobot_map_merge.launch robot_name:=robot_$i &
+  roslaunch multirobot_stage action_node.launch robot_id:=$i &
   pid="$pid $!"
 done
 
