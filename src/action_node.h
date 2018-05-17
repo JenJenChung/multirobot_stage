@@ -148,7 +148,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     
 void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
-    ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
+    // ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
     // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
     visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, *(odoms_[robot_id_]));
@@ -160,7 +160,7 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::s
     std::string map_frame = merged_map_->header.frame_id;
     std::string odom_frame = msg_in->header.frame_id;
 
-    ROS_INFO("[odomCallback] odom_frame: %s\tmerged_map_->header.frame_id: %s\n", odom_frame.c_str(), merged_map_->header.frame_id.c_str());
+    // ROS_INFO("[odomCallback] odom_frame: %s\tmerged_map_->header.frame_id: %s\n", odom_frame.c_str(), merged_map_->header.frame_id.c_str());
 
     if (map_frame[0]=='/'){map_frame.erase(0,1);}
     if (odom_frame[0]=='/'){odom_frame.erase(0,1);}
@@ -186,7 +186,7 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::s
 move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose.header.frame_id = odoms_[robot_id_]->header.frame_id;
-    ROS_INFO("Robot %d - goal.target_pose.header.frame_id: %s\n", robot_id_, goal.target_pose.header.frame_id.c_str());
+    // ROS_INFO("Robot %d - goal.target_pose.header.frame_id: %s\n", robot_id_, goal.target_pose.header.frame_id.c_str());
     goal.target_pose.header.stamp = ros::Time::now() ;
 
     Eigen::Vector3d action = getAction(current_state_);
@@ -199,11 +199,11 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
 
 Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     // This method outputs an action belonging to a state according to the loaded policy
-    ROS_INFO("Starting getAction()\n");
+    // ROS_INFO("Starting getAction()\n");
     Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
     Eigen::Map<VectorXd> nn_input(M.data(), M.size());
     Eigen::Vector3d action;
-    ROS_INFO("M.size: (%ld, %ld) nn_input.size: (%ld, %ld)\n", M.rows(), M.cols(), nn_input.rows(), nn_input.cols());
+    // ROS_INFO("M.size: (%ld, %ld) nn_input.size: (%ld, %ld)\n", M.rows(), M.cols(), nn_input.rows(), nn_input.cols());
     if (nn_input.maxCoeff()!=0){
         nn_input = nn_input/nn_input.maxCoeff(); // scale input
         action = policy_.EvaluateNN(nn_input); // Evaluate the network with the state as input
@@ -216,7 +216,7 @@ Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
     action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
     action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
     action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
-    ROS_INFO("Finished getAction()\n");
+    // ROS_INFO("Finished getAction()\n");
     return action;
 }
 
@@ -229,12 +229,12 @@ void ActionNode::actionThread(){
     ros::Rate r(5);
     while (ros::ok){
         r.sleep();
-        ROS_INFO("[actionThread] merged_map header frame_id: (%s) and seq: (%d)\n", merged_map_->header.frame_id.c_str(), merged_map_->header.seq);
-        ROS_INFO("[actionThread] odom header frame id for robot %d: %s.\n", robot_id_, odoms_[robot_id_]->header.frame_id.c_str());
+        // ROS_INFO("[actionThread] merged_map header frame_id: (%s) and seq: (%d)\n", merged_map_->header.frame_id.c_str(), merged_map_->header.seq);
+        // ROS_INFO("[actionThread] odom header frame id for robot %d: %s.\n", robot_id_, odoms_[robot_id_]->header.frame_id.c_str());
         if (merged_map_) {
-            ROS_INFO("Found merged map!\n");
+            // ROS_INFO("Found merged map!\n");
             if (!merged_map_->header.frame_id.empty()){
-                ROS_INFO("Merged map not empty\n");
+                // ROS_INFO("Merged map not empty\n");
                 if (goal_state != nullptr){
                     if (goal_state->isDone()){  //
                         ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
@@ -262,33 +262,6 @@ void ActionNode::actionThread(){
             }
         }
     }
-    // OLD:
-    // while (ros::ok){
-    //     r.sleep();
-    //     if (!merged_map_->header.frame_id.empty()){
-    //         if (goal_state){
-    //             if (goal_state->isDone()){  //
-    //                 ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
-    //                 *goal_state = ac.sendGoalAndWait(getGoal());
-    //                 if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
-    //                     ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
-    //                 } else {
-    //                     ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
-    //                 }
-    //             }
-    //         } else {
-    //             ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
-    //             goal_state = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
-    //         }
-    //         if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
-    //             ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
-    //         } else {
-    //             ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
-    //         }
-    //     } else {
-    //         ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
-    //     }
-    // }
 }
 
 void ActionNode::spin(){
