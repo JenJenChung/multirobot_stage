@@ -165,22 +165,21 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::s
     if (map_frame[0]=='/'){map_frame.erase(0,1);}
     if (odom_frame[0]=='/'){odom_frame.erase(0,1);}
     try{
-        geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(odom_frame, map_frame, ros::Time(0));
-        geometry_msgs::PoseStamped pose_in, pose_out; 
-        pose_in.header = msg_in->header;
-        pose_in.pose = msg_in->pose.pose;
-        tf2::doTransform(pose_in, pose_out, odom_trans);
-        msg_out->pose.pose = pose_out.pose;
-        msg_out->header = pose_out.header;
-<<<<<<< HEAD
-=======
-        // if (map_frame[0]!='/'){map_frame.insert(0,"/");}
-        // msg_out->header.frame_id = map_frame;
->>>>>>> small refactoring of action node code, work on fixing multirobot scenario
-    }
-    catch (tf2::TransformException &ex) {
-        ROS_WARN("%s",ex.what());
-        ros::Duration(1.0).sleep();
+      geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(map_frame, odom_frame, ros::Time(0));
+      geometry_msgs::PoseStamped pose_in, pose_out;
+      pose_in.header = msg_in->header;
+      pose_in.pose = msg_in->pose.pose;
+      tf2::doTransform(pose_in, pose_out, odom_trans);
+      msg_out->pose.pose = pose_out.pose;
+      msg_out->header = pose_out.header;
+      ROS_INFO("pose_in: %f, %f, %f\tpose_out: %f, %f, %f\n", pose_in.pose.position.x,
+               pose_in.pose.position.y, pose_in.pose.position.z,  msg_out->pose.pose.position.x,
+                msg_out->pose.pose.position.y,  msg_out->pose.pose.position.z);
+      // if (map_frame[0]!='/'){map_frame.insert(0,"/");}
+      // msg_out->header.frame_id = map_frame;
+    } catch (tf2::TransformException &ex) {
+      ROS_WARN("%s", ex.what());
+      ros::Duration(1.0).sleep();
     }
 }
 
