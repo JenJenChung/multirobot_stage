@@ -5,16 +5,16 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
              std::string& robot_name) {
     // intercept updates to robot_i/map and publish those to
     // robot_i/comms_node/robot_j/map whenever the robots are in range to communicate
-    ROS_INFO("beginning of callback with robot name: %s!\n", robot_name.c_str());
+    // ROS_INFO("beginning of callback with robot name: %s!\n", robot_name.c_str());
     float comms_range = 8.0;
 
     // store robot map
     _robot_maps[robot_name] = msg;
 
     if (_robot_odoms.count(robot_name) != 0) {
-        // ROS_INFO("mapInterceptCallback by %s with position (%f)\n", 
+        // ROS_INFO("mapInterceptCallback by %s with position (%f)\n",
         //             robot_name.c_str(), _robot_odoms[robot_name]->twist.twist.linear.x);
-        // ROS_INFO("mapInterceptCallback by %s with position (%f, %f, %f)\n", 
+        // ROS_INFO("mapInterceptCallback by %s with position (%f, %f, %f)\n",
         //             robot_name.c_str(), _robot_odoms[robot_name]->twist.twist.linear.x,
         //             _robot_odoms[robot_name]->twist.twist.linear.y, _robot_odoms[robot_name]->twist.twist.linear.z);
 
@@ -26,7 +26,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
         // TODO: currently only works for n=2 robots
         for (auto &r : _robot_names)
         {
-            ROS_INFO("Looking at robot: %s\n", r.c_str());
+            // ROS_INFO("Looking at robot: %s\n", r.c_str());
             // if (true)
             if (r != robot_name)
             {
@@ -35,7 +35,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
                 ROS_INFO("Distance from %s to %s: %f", robot_name.c_str(), r.c_str(), d);
 
                 // always publish map from robot whose callback was called
-                ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
+                // ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
                 std::string callback_robot_topic = robot_name + robot_name; // i since callback robot is j
                 _map_pubs[callback_robot_topic]->publish(_robot_maps[robot_name]);
                 // publish callback_robot and other_robot's maps such that they can be merged if close enough for communication
@@ -46,7 +46,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
                     // publish other robot's map if nearby
                     if (_robot_maps.count(r) != 0) {
                         callback_robot_topic = robot_name + r; // 
-                        ROS_INFO("And publishing %s's map.\n", r.c_str());
+                        // ROS_INFO("And publishing %s's map.\n", r.c_str());
                         _map_pubs[callback_robot_topic]->publish(_robot_maps[r]);
                         // ROS_INFO("And done publishing %s's map.\n", r.first.c_str());
                     }
@@ -62,7 +62,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
     {
         ROS_INFO("Key %s not found!\n", robot_name.c_str());
     }
-    ROS_INFO("End of callback!\n");
+    // ROS_INFO("End of callback!\n");
 }
 
 // store most recent odom for each robot

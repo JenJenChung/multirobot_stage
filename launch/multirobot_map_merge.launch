@@ -26,5 +26,5 @@
   <arg name="dyaw" default="0"/>
   <arg name="dpitch" default="0"/>
   <arg name="droll" default="0"/>  
-  <node pkg="tf" type="static_transform_publisher" name="$(arg parent_frame)_to_$(arg child_frame)" args="$(arg dx) $(arg dy) $(arg dz) $(arg dyaw) $(arg dpitch) $(arg droll) $(arg parent_frame) $(arg child_frame) 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="$(arg parent_frame)_to_$(arg child_frame)_$(arg robot_name)" args="$(arg dx) $(arg dy) $(arg dz) $(arg dyaw) $(arg dpitch) $(arg droll) $(arg parent_frame) $(arg child_frame) 100"/>
 </launch>

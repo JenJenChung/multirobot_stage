@@ -33,7 +33,7 @@ void ExplorationRewards::mapCallback(const boost::shared_ptr<nav_msgs::Occupancy
     std_msgs::Float64 area_msg;
     area_msg.data = min_area->second;
     _pub.publish(area_msg);
-    ROS_INFO("current min area is by %s: %f\n", min_area->first.c_str(), min_area->second);
+    // ROS_INFO("current min area is by %s: %f\n", min_area->first.c_str(), min_area->second);
   } else {
     ROS_INFO("_explored_areas still empty!\n");
   }
