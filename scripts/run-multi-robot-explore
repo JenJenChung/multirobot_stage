@@ -34,7 +34,7 @@ done
 roslaunch multirobot_stage rewards_node.launch nRob:=$N_ROBOTS &
 pid="$pid $!"
 
-rosrun multirobot_stage comms_node
+rosrun multirobot_stage comms_node &
 pid="$pid $!"
 
 # =========== END ROS simulation nodes =========== 
