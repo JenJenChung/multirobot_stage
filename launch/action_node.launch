@@ -1,7 +1,7 @@
 <launch>
   <arg name="robot_id" default="0"/>
   <group ns="robot_$(arg robot_id)">
-    <node pkg="multirobot_stage" type="action_node" name="action_node" output="screen" >
+    <node respawn="true" pkg="multirobot_stage" type="action_node" name="action_node" output="screen" >
       <!-- <param name="robot_map_topic" value="map"/> -->
       <param name="robot_id" value="$(arg robot_id)"/>
       <param name="root_namespace" value="robot"/>

@@ -1,6 +1,6 @@
 <launch>
   <group ns="robot_0">
-    <node pkg="multirobot_stage" type="action_node" name="action_node" output="screen">
+    <node respawn="true" pkg="multirobot_stage" type="action_node" name="action_node" output="screen">
       <param name="robot_map_topic" value="map"/>
       <param name="robot_id" value="0"/>
       <param name="root_namespace" value="robot"/>

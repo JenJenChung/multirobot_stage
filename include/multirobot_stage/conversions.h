@@ -59,15 +59,16 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
         }
     }
     // add the other robots, one column per robot.
-    int r_idx = 3;
-    for (int r = 0; r<n_robots; r++){
+    unsigned int r_idx = 3;
+    for (unsigned int r = 0; r<n_robots; r++){
         if (r!=robot_id){
             geometry_msgs::Pose2D other_robot = odomToPose2D(*(odoms[r]));
             double dx = other_robot.x-robot.x;
             double dy = other_robot.y-robot.y;
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
             double t_r = atan2(dy,dx)-robot.theta; // bearing to 
-            int t_idx = round(t_r*n_th/(2*M_PI));
+            unsigned int t_idx = std::fmod(round(t_r*n_th/(2*M_PI))+n_th,n_th);
+            //ROS_INFO("[Robot-%i-mapToPolar] Index of robot %i in the table: %i", robot_id, r, t_idx);
             polar(t_idx,r_idx) = l_r;
             r_idx++;
         }

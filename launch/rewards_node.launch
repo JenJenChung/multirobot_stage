@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="multirobot_stage" type="rewards_node" name="rewards_node" output="screen">
+    <node respawn="true" pkg="multirobot_stage" type="rewards_node" name="rewards_node" output="screen">
       <param name="merged_map_topic" value="/map_merge/map"/>
       <param name = "nRob" value="$(arg nRob)"/>
     </node>
