@@ -31,22 +31,22 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
     geometry_msgs::Point origin = map.info.origin.position;
     geometry_msgs::Pose2D robot = odomToPose2D(*(odoms[robot_id]));
     double theta;
-    int l = 0;
-    int b = 0;
+    std::size_t l = 0;
+    std::size_t b = 0;
     bool looking = true;
-    for (int i = 0; i<n_th; i++){
+    for (std::size_t i = 0; i<n_th; i++){
         theta = theta + 2*M_PI/n_th;
         l = 0;
         b = 0;
         looking = true;
         polar(i,0) = theta;
         while (looking){
-            int x = round(cos(robot.theta + theta)*l + (robot.x-origin.x)/res);
-            int y = round(sin(robot.theta + theta)*l + (robot.y-origin.y)/res);
+            std::size_t x = round(cos(robot.theta + theta)*l + (robot.x-origin.x)/res);
+            std::size_t y = round(sin(robot.theta + theta)*l + (robot.y-origin.y)/res);
             if (x > map.info.width || y > map.info.height || x < 0 || y < 0){
                 looking = false;
             } else {
-                int a = y*map.info.width + x;
+                std::size_t a = y*map.info.width + x;
                 if (map.data[a]>thresh && polar(i,1)==0){ // distance to closest obstacle
                     polar(i,1) = l*res;
                 }
@@ -59,16 +59,16 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
         }
     }
     // add the other robots, one column per robot.
-    unsigned int r_idx = 3;
-    for (unsigned int r = 0; r<n_robots; r++){
+    std::size_t r_idx = 3;
+    for (std::size_t r = 0; r<n_robots; r++){
         if (r!=robot_id){
             geometry_msgs::Pose2D other_robot = odomToPose2D(*(odoms[r]));
             double dx = other_robot.x-robot.x;
             double dy = other_robot.y-robot.y;
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
-            double t_r = atan2(dy,dx)-robot.theta; // bearing to 
-            unsigned int t_idx = std::fmod(round(t_r*n_th/(2*M_PI))+n_th,n_th);
-            //ROS_INFO("[Robot-%i-mapToPolar] Index of robot %i in the table: %i", robot_id, r, t_idx);
+            double t_r = atan2(dy,dx)-robot.theta; // bearing to current robot
+            std::size_t t_idx = round(std::fmod(t_r*n_th/(2*M_PI)+n_th,n_th)); // make sure index is between 0 and n_th
+            ROS_INFO("[Robot-%i-mapToPolar] Index of robot %lu in the table: %lu,%lu", robot_id, r, t_idx, r_idx);
             polar(t_idx,r_idx) = l_r;
             r_idx++;
         }
@@ -108,7 +108,7 @@ visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar,
     visualization_msgs::MarkerArray markers;
     double obstx, obsty, frontx, fronty;
     visualization_msgs::Marker obst, front;
-    for (int i=0; i<polar.rows(); i++){
+    for (std::size_t i=0; i<polar.rows(); i++){
         obst.ns = "obstacle_markers";
         obst.id = i;
         obst.header.frame_id = odom.header.frame_id;

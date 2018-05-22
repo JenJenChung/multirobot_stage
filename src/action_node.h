@@ -104,16 +104,16 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.getParam(B_param.str(), BB);
     MatrixXd A(n_th_*(1+n_robots_), n_hidden);
     MatrixXd B(n_hidden+1, 3);
-    int ii = 0;
-    for (int i=0; i<A.rows(); i++){
-        for (int j=0; j<A.cols(); j++){
+    std::size_t ii = 0;
+    for (std::size_t i=0; i<A.rows(); i++){
+        for (std::size_t j=0; j<A.cols(); j++){
             A(i,j) = AA[ii];
             ii++;
         }
     }
     ii = 0;
-    for (int i=0; i<B.rows(); i++){
-        for (int j=0; j<B.cols(); j++){
+    for (std::size_t i=0; i<B.rows(); i++){
+        for (std::size_t j=0; j<B.cols(); j++){
             B(i,j) = BB[ii];
             ii++;
         }
@@ -121,7 +121,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     policy_ = NeuralNet(n_th_*(1+n_robots_), 3, n_hidden, LOGISTIC);
     policy_.SetWeights(A, B);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Weight matrices set!");
-    for (int r = 0; r < n_robots_; r++){
+    for (std::size_t r = 0; r < n_robots_; r++){
         odoms_.push_back(std::make_shared<nav_msgs::Odometry>());  // create one odometry var per robot
     }
     // odoms_ = new nav_msgs::Odometry[n_robots_];
@@ -136,7 +136,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     map_sub_ = nh_.subscribe(mergedmaptopic.str(), 10 , &ActionNode::mapCallback, this);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << mergedmaptopic.str());
 
-    for (int r = 0; r < n_robots_; r++){
+    for (std::size_t r = 0; r < n_robots_; r++){
         std::stringstream robotopic;
         robotopic << "/" << rootns << "_" << r << "/" << odom_topic;
         odom_sub_[r] = nh_.subscribe<nav_msgs::Odometry>(robotopic.str(), 10, boost::bind(&ActionNode::odomCallback, this, _1, odoms_[r]));
@@ -190,6 +190,7 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     goal.target_pose.header.stamp = ros::Time::now() ;
 
     Eigen::Vector3d action = getAction(current_state_);
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Action (Eigen::Vector3d):\n" << action);
     goal.target_pose.pose = polarToPose(action, *(odoms_[robot_id_]));  // TODO: dereferecing occurring in correct order?
 
     geometry_msgs::Twist waypoint = polarToTwist(action, *(odoms_[robot_id_]));
@@ -212,7 +213,8 @@ Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
         ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input to neural net. Performing 0 action");
     }
     // convert NN output to feasible action on the map
-    int t_idx = round(action(0)*n_th_);
+    std::size_t t_idx = round(std::fmod(action(0)*n_th_,n_th_));
+    //ROS_INFO("[Robot-%i-getAction()] Index of state for distance: %lu", robot_id_, t_idx);
     action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
     action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
     action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
