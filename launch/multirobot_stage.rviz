@@ -52,12 +52,12 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Robot0_local_map
       Topic: /robot_0/map
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: map
@@ -325,8 +325,6 @@ Visualization Manager:
           Value: true
         robot_0/base_link:
           Value: true
-        robot_0/map:
-          Value: true
         robot_0/odom:
           Value: true
         robot_1/base_footprint:
@@ -335,11 +333,7 @@ Visualization Manager:
           Value: true
         robot_1/base_link:
           Value: true
-        robot_1/map:
-          Value: true
         robot_1/odom:
-          Value: true
-        world:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -347,22 +341,17 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        world:
-          map:
-            robot_0/map:
-              {}
-            robot_0/odom:
-              robot_0/base_footprint:
-                robot_0/base_link:
-                  robot_0/base_laser_link:
-                    {}
-            robot_1/map:
-              {}
-            robot_1/odom:
-              robot_1/base_footprint:
-                robot_1/base_link:
-                  robot_1/base_laser_link:
-                    {}
+        map:
+          robot_0/odom:
+            robot_0/base_footprint:
+              robot_0/base_link:
+                robot_0/base_laser_link:
+                  {}
+          robot_1/odom:
+            robot_1/base_footprint:
+              robot_1/base_link:
+                robot_1/base_laser_link:
+                  {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -537,7 +526,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: world
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -558,7 +547,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 100.659866
+      Distance: 34.5655479
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1

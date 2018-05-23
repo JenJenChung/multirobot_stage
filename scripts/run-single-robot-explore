@@ -9,7 +9,7 @@ pid=$!
 echo "Launching navigation stack..."
 sleep 2s
 
-roslaunch nav_bundle single_slam.launch robot_name:=robot_0 &
+roslaunch multirobot_stage single_slam.launch robot_name:=robot_0 &
 pid="$pid $!"
 
 roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_0 &
