@@ -70,7 +70,7 @@ class ActionNode{
         void odomCallback(const nav_msgs::Odometry::ConstPtr&, std::shared_ptr<nav_msgs::Odometry>);
 
         move_base_msgs::MoveBaseGoal getGoal();
-        Eigen::Vector3d getAction(const Eigen::MatrixXd&);
+        Eigen::Vector3d getAction(const Eigen::MatrixXd);
         void actionThread();
         
 };
@@ -147,7 +147,7 @@ void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
     // ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-    ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
     visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, *(odoms_[robot_id_]));
     rec_map_pub_.publish(rec_map);
 }
@@ -195,26 +195,35 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     return goal;
 }
 
-Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd &state){
+Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd state){
     // This method outputs an action belonging to a state according to the loaded policy
     // ROS_INFO("Starting getAction()\n");
     Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
     Eigen::Map<VectorXd> nn_input(M.data(), M.size());
+    Eigen::VectorXd nn_output;
     Eigen::Vector3d action;
     // ROS_INFO("M.size: (%ld, %ld) nn_input.size: (%ld, %ld)\n", M.rows(), M.cols(), nn_input.rows(), nn_input.cols());
     if (nn_input.maxCoeff()!=0){
         nn_input = nn_input/nn_input.maxCoeff(); // scale input
-        action = policy_.EvaluateNN(nn_input); // Evaluate the network with the state as input
+        nn_output = policy_.EvaluateNN(nn_input); // Evaluate the network with the state as input
+        // convert NN output to feasible action on the map
+        Eigen::MatrixXd::Index maxRow, maxCol;
+        double max = nn_output.maxCoeff(&maxRow, &maxCol);    
+        action(0) = state(maxRow,0); // direction to go to, convert to radians
+        action(1) = state(maxRow,2) * nn_output(maxRow); // distance to travel into direction, scaled by distance to frontier in that direction
+        action(2) = 0; // new heading of the robot, convert to radians
+        
     } else {
         action << 0, 0, 0;
         ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input to neural net. Performing 0 action");
     }
-    // convert NN output to feasible action on the map
-    std::size_t t_idx = round(std::fmod(action(0)*n_th_,n_th_));
+
+    // Old:
+    //std::size_t t_idx = round(std::fmod(action(0)*n_th_,n_th_));
     //ROS_INFO("[Robot-%i-getAction()] Index of state for distance: %lu", robot_id_, t_idx);
-    action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
-    action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
-    action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
+    // action(0) = action(0) * 2 * M_PI; // direction to go to, convert to radians
+    // action(1) = action(1) * state(t_idx,2); // distance to travel into direction, scaled by distance to frontier in that direction
+    // action(2) = action(2) * 2 * M_PI; // new heading of the robot, convert to radians
     // ROS_INFO("Finished getAction()\n");
     return action;
 }
