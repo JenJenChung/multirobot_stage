@@ -347,23 +347,22 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          robot_0/map:
-            {}
-          robot_0/odom:
-            robot_0/base_footprint:
-              robot_0/base_link:
-                robot_0/base_laser_link:
-                  {}
-          robot_1/map:
-            {}
-          robot_1/odom:
-            robot_1/base_footprint:
-              robot_1/base_link:
-                robot_1/base_laser_link:
-                  {}
         world:
-          {}
+          map:
+            robot_0/map:
+              {}
+            robot_0/odom:
+              robot_0/base_footprint:
+                robot_0/base_link:
+                  robot_0/base_laser_link:
+                    {}
+            robot_1/map:
+              {}
+            robot_1/odom:
+              robot_1/base_footprint:
+                robot_1/base_link:
+                  robot_1/base_laser_link:
+                    {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -538,7 +537,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -559,7 +558,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 52.4662018
+      Distance: 100.659866
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1

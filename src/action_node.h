@@ -8,11 +8,8 @@ for i={0,..,n}
     - robot_i/odom (Odometry)
 
 Published topics:
-- robot_ID/next_waypoint (geometry_msgs/Twist)
-- robot_ID/polar_state (Array)
+- robot_ID/rec_map (VisualizationMarkerArray)
 
-Services:
-- check if waypoint reached succesfully
 
 Logic:
     - subscribe to local shared map
@@ -150,7 +147,7 @@ void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
     // ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
     visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, *(odoms_[robot_id_]));
     rec_map_pub_.publish(rec_map);
 }
@@ -194,7 +191,7 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     goal.target_pose.pose = polarToPose(action, *(odoms_[robot_id_]));  // TODO: dereferecing occurring in correct order?
 
     geometry_msgs::Twist waypoint = polarToTwist(action, *(odoms_[robot_id_]));
-    ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted waypoint (geometry_msgs/Twist):\n" << waypoint);
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted waypoint (geometry_msgs/Twist):\n" << waypoint);
     return goal;
 }
 
@@ -247,7 +244,7 @@ void ActionNode::actionThread(){
                             ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
                         }
                     } else {
-                        ROS_INFO("goal_state is not Done, doing nothing...\n");
+                        ROS_INFO_STREAM("Robot " << robot_id_ << ": goal_state is not done. Waiting...");
                     }
                 } else {
                     ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
