@@ -97,6 +97,7 @@ MultiRobotNE::~MultiRobotNE(){
 }
 
 void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
+  ROS_INFO("episodeCallback!\n\n");
   // Read out reward
   double r = msg.data ;
   for (int n = 0; n < nRob; n++){
@@ -109,10 +110,12 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
   
   teamCount++ ;
   teamCount = teamCount % (nPop*2) ;
+  ROS_INFO("teamCount: %d\n", teamCount);
   
   if (teamCount % (nPop*2) == 0){
     // Record champion team
     rewardLog.push_back(maxR) ;
+    ROS_INFO("\t\t\t\tNeural Evolution is writing files with maxR = %f\n", maxR);
     char strA[50] ;
     char strB[50] ;
     for (int n = 0; n < nRob; n++){
@@ -129,12 +132,14 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
   }
   
   NewEpisode() ;
+  ROS_INFO("episodeCallback end, started NewEpisode\n");
 }
 
 void MultiRobotNE::NewEpisode(){
   // Initialise new epoch if all policies in current round have been tested
   if (teamCount % (nPop*2) == 0){ // new epoch
     epochCount++ ;
+    ROS_INFO("epochCount: %d\n", epochCount);
     
     // Container for storing population indices
     vector<int> tt ;

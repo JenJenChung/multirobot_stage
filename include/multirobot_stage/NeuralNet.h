@@ -146,6 +146,7 @@ void NeuralNet::OutputNN(const char * A, const char * B){
 	NNFileNameA << A ;
 	std::stringstream NNFileNameB ;
 	NNFileNameB << B ;
+  ROS_INFO("Writing weights to files %s and %s\n", NNFileNameA.str().c_str(), NNFileNameB.str().c_str());
 
   WriteNN(weightsA, NNFileNameA) ;
   WriteNN(weightsB, NNFileNameB) ;
@@ -244,6 +245,7 @@ void NeuralNet::WriteNN(MatrixXd A, std::stringstream &fileName){
     NNFile << "\n" ;
 	}
 	NNFile.close() ;
+  ROS_INFO("Finished writing to file %s.\n", fileName.str().c_str());
 }
 
 // Initialise NN weight matrices to random values
