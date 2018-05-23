@@ -50,7 +50,7 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
                 if (map.data[a]>thresh && polar(i,1)==0){ // distance to closest obstacle
                     polar(i,1) = l*res;
                 }
-                if (map.data[a]==-1 && map.data[b]!=-1){ // distance to frontier
+                if (map.data[a]==-1 && map.data[b]==0){ // distance to frontier
                     polar(i,2) = l*res;
                 }
                 b = a;
@@ -68,7 +68,7 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
             double t_r = atan2(dy,dx)-robot.theta; // bearing to current robot
             std::size_t t_idx = round(std::fmod(t_r*n_th/(2*M_PI)+n_th,n_th)); // make sure index is between 0 and n_th
-            // ROS_INFO("[Robot-%i-mapToPolar] Index of robot %lu in the table: %lu,%lu", robot_id, r, t_idx, r_idx);
+            ROS_INFO("[Robot-%i-mapToPolar] Index of robot %lu in the table: %lu,%lu", robot_id, r, t_idx, r_idx);
             polar(t_idx,r_idx) = l_r;
             r_idx++;
         }
@@ -107,7 +107,7 @@ visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar,
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     visualization_msgs::MarkerArray markers;
     double obstx, obsty, frontx, fronty;
-    visualization_msgs::Marker obst, front;
+    visualization_msgs::Marker obst, front, rob;
     for (std::size_t i=0; i<polar.rows(); i++){
         obst.ns = "obstacle_markers";
         obst.id = i;
@@ -118,9 +118,9 @@ visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar,
         obst.pose.orientation.w = 1;
         obst.action = visualization_msgs::Marker::ADD;
         obst.type = visualization_msgs::Marker::SPHERE;
-        obst.scale.x = 20*res;
-        obst.scale.y = 20*res;
-        obst.scale.z = 20*res; 
+        obst.scale.x = 25*res;
+        obst.scale.y = 25*res;
+        obst.scale.z = 25*res; 
         obst.color.r = 1;
         obst.color.g = 0;
         obst.color.b = 0;
@@ -136,9 +136,9 @@ visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar,
         front.pose.orientation.w = 1;
         front.action = visualization_msgs::Marker::ADD;
         front.type = visualization_msgs::Marker::SPHERE;
-        front.scale.x = 20*res;
-        front.scale.y = 20*res;
-        front.scale.z = 20*res;
+        front.scale.x = 25*res;
+        front.scale.y = 25*res;
+        front.scale.z = 25*res;
         front.color.r = 0;
         front.color.g = 0;
         front.color.b = 1;
@@ -147,6 +147,27 @@ visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar,
 
         markers.markers.push_back(obst);
         markers.markers.push_back(front);
+
+        if (polar.cols()==4 && polar(i,3)!=0){
+            rob.ns = "robot_markers";
+            rob.id = 0;
+            rob.header.frame_id = odom.header.frame_id;
+            rob.header.stamp = ros::Time();
+            rob.pose.position.x = cos(robot.theta + polar(i,0))*polar(i,3) + robot.x;
+            rob.pose.position.y = sin(robot.theta + polar(i,0))*polar(i,3) + robot.y;
+            rob.pose.orientation.w = 1;
+            rob.action = visualization_msgs::Marker::ADD;
+            rob.type = visualization_msgs::Marker::SPHERE;
+            rob.scale.x = 50*res;
+            rob.scale.y = 50*res;
+            rob.scale.z = 50*res;
+            rob.color.r = 0;
+            rob.color.g = 1;
+            rob.color.b = 0;
+            rob.color.a = 1;
+            rob.frame_locked = true;
+            markers.markers.push_back(rob);
+        }
     }
     return markers;
 }
