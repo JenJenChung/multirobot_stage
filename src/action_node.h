@@ -147,7 +147,7 @@ void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
     // ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
+    ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
     visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, *(odoms_[robot_id_]));
     rec_map_pub_.publish(rec_map);
 }
@@ -182,15 +182,17 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::s
 
 move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     move_base_msgs::MoveBaseGoal goal;
-    goal.target_pose.header.frame_id = odoms_[robot_id_]->header.frame_id;
+    nav_msgs::Odometry current_odom = *(odoms_[robot_id_]);
+    goal.target_pose.header = current_odom.header;
+    //goal.target_pose.header.frame_id = current_odom.header.frame_id;
     // ROS_INFO("Robot %d - goal.target_pose.header.frame_id: %s\n", robot_id_, goal.target_pose.header.frame_id.c_str());
-    goal.target_pose.header.stamp = ros::Time::now() ;
+    //goal.target_pose.header.stamp = ros::Time::now() ;
 
     Eigen::Vector3d action = getAction(current_state_);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Action (Eigen::Vector3d):\n" << action);
-    goal.target_pose.pose = polarToPose(action, *(odoms_[robot_id_]));  // TODO: dereferecing occurring in correct order?
+    goal.target_pose.pose = polarToPose(action, current_odom);  // TODO: dereferecing occurring in correct order?
 
-    geometry_msgs::Twist waypoint = polarToTwist(action, *(odoms_[robot_id_]));
+    geometry_msgs::Twist waypoint = polarToTwist(action, current_odom);
     // ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted waypoint (geometry_msgs/Twist):\n" << waypoint);
     return goal;
 }
@@ -209,9 +211,9 @@ Eigen::Vector3d ActionNode::getAction(const Eigen::MatrixXd state){
         // convert NN output to feasible action on the map
         Eigen::MatrixXd::Index maxRow, maxCol;
         double max = nn_output.maxCoeff(&maxRow, &maxCol);    
-        action(0) = state(maxRow,0); // direction to go to, convert to radians
+        action(0) = state(maxRow,0); // direction to go to
         action(1) = state(maxRow,2) * nn_output(maxRow); // distance to travel into direction, scaled by distance to frontier in that direction
-        action(2) = 0; // new heading of the robot, convert to radians
+        action(2) = state(maxRow,0); // new heading of the robot
         
     } else {
         action << 0, 0, 0;
@@ -259,11 +261,11 @@ void ActionNode::actionThread(){
                     ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
                     goal_state = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal()));
                 }
-                if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
-                    ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
-                } else {
-                    ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
-                }
+                // if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
+                //     ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
+                // } else {
+                //     ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
+                // }
             } else {
                 ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
                 ros::Duration(1.0).sleep();

@@ -511,7 +511,9 @@ Visualization Manager:
       Marker Topic: /robot_0/action_node/rec_map
       Name: Robot0_reconstructed_map
       Namespaces:
-        {}
+        frontier_markers: true
+        obstacle_markers: true
+        robot_markers: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -519,7 +521,9 @@ Visualization Manager:
       Marker Topic: /robot_1/action_node/rec_map
       Name: Robot1_reconstructed_map
       Namespaces:
-        {}
+        frontier_markers: true
+        obstacle_markers: true
+        robot_markers: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -547,7 +551,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 34.5655479
+      Distance: 136.729416
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1

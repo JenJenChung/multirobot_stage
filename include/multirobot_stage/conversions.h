@@ -25,17 +25,21 @@ geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
     return pose;
 }
 
-Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::shared_ptr<nav_msgs::Odometry>> odoms, int robot_id, int n_robots, int n_th=4, double thresh=50){
+Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::shared_ptr<nav_msgs::Odometry>> odomptrs, int robot_id, int n_robots, int n_th=4, double thresh=50){
+    std::vector<nav_msgs::Odometry> odoms(odomptrs.size());
+    for (std::size_t i = 0; i<odoms.size(); i++){
+        odoms[i] = *(odomptrs[i]);
+    } 
+    
     Eigen::MatrixXd polar = Eigen::MatrixXd::Zero(n_th,2+n_robots);
     double res = map.info.resolution;
     geometry_msgs::Point origin = map.info.origin.position;
-    geometry_msgs::Pose2D robot = odomToPose2D(*(odoms[robot_id]));
-    double theta;
+    geometry_msgs::Pose2D robot = odomToPose2D(odoms[robot_id]);
+    double theta = 0;
     std::size_t l = 0;
     std::size_t b = 0;
     bool looking = true;
     for (std::size_t i = 0; i<n_th; i++){
-        theta = theta + 2*M_PI/n_th;
         l = 0;
         b = 0;
         looking = true;
@@ -57,17 +61,18 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
                 l++;   
             }
         }
+        theta = theta + 2*M_PI/n_th;
     }
     // add the other robots, one column per robot.
     std::size_t r_idx = 3;
     for (std::size_t r = 0; r<n_robots; r++){
         if (r!=robot_id){
-            geometry_msgs::Pose2D other_robot = odomToPose2D(*(odoms[r]));
+            geometry_msgs::Pose2D other_robot = odomToPose2D(odoms[r]);
             double dx = other_robot.x-robot.x;
             double dy = other_robot.y-robot.y;
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
             double t_r = atan2(dy,dx)-robot.theta; // bearing to current robot
-            std::size_t t_idx = round(std::fmod(t_r*n_th/(2*M_PI)+n_th,n_th)); // make sure index is between 0 and n_th
+            std::size_t t_idx = std::fmod(t_r*n_th/(2*M_PI)+n_th,n_th); // make sure index is between 0 and n_th-1
             ROS_INFO("[Robot-%i-mapToPolar] Index of robot %lu in the table: %lu,%lu", robot_id, r, t_idx, r_idx);
             polar(t_idx,r_idx) = l_r;
             r_idx++;
@@ -76,7 +81,7 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
     return polar;
 }
 
-geometry_msgs::Twist polarToTwist(const Eigen::Vector3d &polar, nav_msgs::Odometry &odom){
+geometry_msgs::Twist polarToTwist(const Eigen::Vector3d polar, nav_msgs::Odometry odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     geometry_msgs::Twist out;
     out.linear.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
@@ -88,7 +93,7 @@ geometry_msgs::Twist polarToTwist(const Eigen::Vector3d &polar, nav_msgs::Odomet
     return out;
 }
 
-geometry_msgs::Pose polarToPose(const Eigen::Vector3d &polar, nav_msgs::Odometry &odom){
+geometry_msgs::Pose polarToPose(const Eigen::Vector3d polar, nav_msgs::Odometry odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     geometry_msgs::Pose pose;
     pose.position.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
@@ -103,7 +108,7 @@ geometry_msgs::Pose polarToPose(const Eigen::Vector3d &polar, nav_msgs::Odometry
     return pose;
 }
 
-visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd &polar, nav_msgs::Odometry &odom, double res=0.005){
+visualization_msgs::MarkerArray polarToMarkerArray(const Eigen::MatrixXd polar, nav_msgs::Odometry odom, double res=0.005){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
     visualization_msgs::MarkerArray markers;
     double obstx, obsty, frontx, fronty;
