@@ -43,6 +43,8 @@ class MultiRobotNE{
     void episodeCallback(const std_msgs::Float64&) ;
     
     void NewEpisode() ;
+    void writeRewardsToFile(double reward);
+    
 };
 
 MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
@@ -106,6 +108,9 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
     maxR = r ;
     maxTeam = teamCount ;
   }
+
+  // write rewards to file
+  writeRewardsToFile(r);
   
   teamCount++ ;
   teamCount = teamCount % (nPop*2) ;
@@ -129,6 +134,13 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
   }
   
   NewEpisode() ;
+}
+
+void MultiRobotNE::writeRewardsToFile(double reward) {
+  std::ofstream rewards_file;
+  rewards_file.open("rewards.txt", std::ios_base::app);
+  rewards_file << "episode reward: " << std::to_string(reward) << "\tmax reward: " << std::to_string(maxR) << "\tepoch num: " << 
+        std::to_string(epochCount) << "\tepisode num: " << std::to_string(teamCount) << std::endl;
 }
 
 void MultiRobotNE::NewEpisode(){
