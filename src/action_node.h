@@ -133,14 +133,15 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     map_sub_ = nh_.subscribe(mergedmaptopic.str(), 10 , &ActionNode::mapCallback, this);
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << mergedmaptopic.str());
 
-    std::stringstream robotopic;
-    if (n_robots_<1){
+    if (n_robots_>1){
         for (std::size_t r = 0; r < n_robots_; r++){
+            std::stringstream robotopic;
             robotopic << "/" << rootns << "_" << robot_id_ << "/comms_node/" << rootns << "_" << r << "/" << odom_topic;
             odom_sub_[r] = nh_.subscribe<nav_msgs::Odometry>(robotopic.str(), 10, boost::bind(&ActionNode::odomCallback, this, _1, odoms_[r]));
             ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << robotopic.str());
         }
     } else if (n_robots_==1){
+        std::stringstream robotopic;
         robotopic << "/" << rootns << "_" << robot_id_ << "/" << odom_topic;
         odom_sub_[0] = nh_.subscribe<nav_msgs::Odometry>(robotopic.str(), 10, boost::bind(&ActionNode::odomCallback, this, _1, odoms_[0]));
         ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << robotopic.str());
