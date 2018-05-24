@@ -6,7 +6,7 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
     // intercept updates to robot_i/map and publish those to
     // robot_i/comms_node/robot_j/map whenever the robots are in range to communicate
     // ROS_INFO("beginning of callback with robot name: %s!\n", robot_name.c_str());
-    float comms_range = 8.0;
+    float comms_range = 5.0;
 
     // store robot map
     _robot_maps[robot_name] = msg;
@@ -38,25 +38,22 @@ void comms_node::mapInterceptCallback(const boost::shared_ptr<nav_msgs::Occupanc
                 // ROS_INFO("Publishing %s's map.\n", robot_name.c_str());
                 std::string callback_robot_topic = robot_name + robot_name; // i since callback robot is j
                 _map_pubs[callback_robot_topic]->publish(_robot_maps[robot_name]);
+
+                // always (re-)publish local robot's odom to /robot_i/comms_node/robot_i/odom
+                _odom_pubs[callback_robot_topic]->publish(_robot_odoms[robot_name]);
+
                 // publish callback_robot and other_robot's maps such that they can be merged if close enough for communication
                 if (d < comms_range)
                 {
-                    // TODO: problem: currently this publishes 3x for 2 robots, i.e. if it's callback 00,
-                    // he publishes for 01, 10 and 11 when it should actually only publish for 01 or 10.
                     // publish other robot's map if nearby
                     if (_robot_maps.count(r) != 0) {
                         callback_robot_topic = robot_name + r; // 
-                        // ROS_INFO("And publishing %s's map.\n", r.c_str());
                         _map_pubs[callback_robot_topic]->publish(_robot_maps[r]);
-                        // ROS_INFO("And done publishing %s's map.\n", r.first.c_str());
+                        _odom_pubs[callback_robot_topic]->publish(_robot_odoms[r]);
                     }
-
                 }
             }
         }
-
-
-        // make sure this is the topic the map merge is listening to
     }
     else
     {

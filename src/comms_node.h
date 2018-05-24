@@ -36,7 +36,7 @@ class comms_node
         for (uint8_t i = 0; i < num_robots; ++i) {
           for (uint8_t j = 0; j < num_robots; ++j) {
             std::string robot_id, other_robot_id, robot_map_topic, robot_pub_topic_key, robot_odom_topic,
-                robot_odom_topic_key, robot_map_topic_republished;
+                robot_odom_topic_key, robot_map_topic_republished, robot_odom_topic_republished;
             robot_id = "robot_" + std::to_string(j);
             other_robot_id = "robot_" + std::to_string(i);
             robot_pub_topic_key = robot_id + other_robot_id;
@@ -44,7 +44,9 @@ class comms_node
             robot_map_topic_republished =
                 "robot_" + std::to_string(j) + "/comms_node/robot_" + std::to_string(i) + "/map";
             robot_odom_topic = "robot_" + std::to_string(j) + "/odom";
-            // if (true)
+            robot_odom_topic_republished =
+                "robot_" + std::to_string(j) + "/comms_node/robot_" + std::to_string(i) + "/odom";
+            
             if (i != j) {
               std::shared_ptr<ros::Subscriber> temp_map_sub = std::make_shared<ros::Subscriber>();
               std::shared_ptr<ros::Subscriber> temp_odom_sub = std::make_shared<ros::Subscriber>();
@@ -66,13 +68,18 @@ class comms_node
               _odom_subs.insert(std::make_pair(robot_id, temp_odom_sub));
             }
 
-            ROS_INFO("Creating published for map %s with key %s\n", robot_map_topic_republished.c_str(),
+            ROS_INFO("Creating publisher for map %s with key %s\n", robot_map_topic_republished.c_str(),
                      robot_pub_topic_key.c_str());
             std::shared_ptr<ros::Publisher> temp_map_pub = std::make_shared<ros::Publisher>();
             *temp_map_pub = _nh.advertise<nav_msgs::OccupancyGrid>(robot_map_topic_republished, 10);
             _map_pubs.insert(std::make_pair(robot_pub_topic_key, temp_map_pub));
 
-            // TODO: publish odom of each robot when in range so other robot can read it
+            // publish odom of each robot when in range so other robot can read it
+            ROS_INFO("Creating publisher for odom %s with key %s\n", robot_odom_topic_republished.c_str(),
+                     robot_pub_topic_key.c_str());
+            std::shared_ptr<ros::Publisher> temp_odom_pub = std::make_shared<ros::Publisher>();
+            *temp_odom_pub = _nh.advertise<nav_msgs::Odometry>(robot_odom_topic_republished, 10);
+            _odom_pubs.insert(std::make_pair(robot_pub_topic_key, temp_odom_pub));
           }
         }
     }
@@ -95,6 +102,7 @@ class comms_node
     std::map<std::string, std::shared_ptr<ros::Subscriber>> _map_subs;
     std::map<std::string, std::shared_ptr<ros::Subscriber>> _odom_subs;
     std::map<std::string, std::shared_ptr<ros::Publisher>> _map_pubs;
+    std::map<std::string, std::shared_ptr<ros::Publisher>> _odom_pubs;
 
     std::map<std::string, boost::shared_ptr<nav_msgs::OccupancyGrid const>> _robot_maps;
     std::map<std::string, boost::shared_ptr<nav_msgs::Odometry const>> _robot_odoms;
