@@ -73,7 +73,7 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
             double l_r = sqrt(pow(dx,2)+pow(dy,2)); // distance to current robot
             double t_r = atan2(dy,dx)-robot.theta; // bearing to current robot
             std::size_t t_idx = std::fmod(t_r*n_th/(2*M_PI)+n_th,n_th); // make sure index is between 0 and n_th-1
-            ROS_INFO("[Robot-%i-mapToPolar] Index of robot %lu in the table: %lu,%lu", robot_id, r, t_idx, r_idx);
+            // ROS_INFO("[Robot-%i-mapToPolar] Index of robot %lu in the table: %lu,%lu", robot_id, r, t_idx, r_idx);
             polar(t_idx,r_idx) = l_r;
             r_idx++;
         }

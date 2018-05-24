@@ -191,6 +191,10 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(){
     move_base_msgs::MoveBaseGoal goal;
     nav_msgs::Odometry current_odom = *(odoms_[robot_id_]);
     goal.target_pose.header = current_odom.header;
+    if (current_odom.header.frame_id.empty()){
+      goal.target_pose.header.frame_id = "/map";
+      ROS_WARN_STREAM("Robot " << robot_id_ << ": Empty frame received. Using default frame /map for goal.");
+    }
     //goal.target_pose.header.frame_id = current_odom.header.frame_id;
     // ROS_INFO("Robot %d - goal.target_pose.header.frame_id: %s\n", robot_id_, goal.target_pose.header.frame_id.c_str());
     //goal.target_pose.header.stamp = ros::Time::now() ;
@@ -259,7 +263,7 @@ void ActionNode::actionThread(){
                         if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
                             ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
                         } else {
-                            ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
+                            ROS_WARN_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
                         }
                     } else {
                         ROS_INFO_STREAM("Robot " << robot_id_ << ": goal_state is not done. Waiting...");
@@ -274,7 +278,7 @@ void ActionNode::actionThread(){
                 //     ROS_INFO_STREAM("Robot " << robot_id_ << ": The base failed to reach the waypoint.") ;
                 // }
             } else {
-                ROS_INFO_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
+                ROS_WARN_STREAM("Robot " << robot_id_ << ": No map/status/state available. Waiting...");
                 ros::Duration(1.0).sleep();
             }
         }

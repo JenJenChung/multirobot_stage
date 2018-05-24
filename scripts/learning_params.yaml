@@ -1,10 +1,10 @@
 learning:
   episode_length: 600.0 # length of each episode in seconds
   #nRob: 1 specified in command line argument
-  nBearings: 4
-  nIn: 12 # nBearings*(nRob+1), required by action node
+  nBearings: 100
+  nIn: 300 # nBearings*(nRob+1), required by action node
   #nOut: 3 # [bearing, distance, orientation], required by action node
-  nOut: 4 # nBearings
+  nOut: 100 # nBearings
   nHidden: 400
   nPop: 2
   nEps: 5
