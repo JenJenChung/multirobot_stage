@@ -7,17 +7,17 @@
 #include <Eigen/Eigen>
 #include <float.h>
 
-#include "multirobot_stage/NeuroEvo.h"
+#include "multirobot_stage/PolicyGrad.h"
 #include "multirobot_stage/NeuralNet.h"
 
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <std_msgs/Float64.h>
 
-class MultiRobotNE{
+class MultiRobotPG{
   public:
-    MultiRobotNE(ros::NodeHandle) ;
-    ~MultiRobotNE() ;
+    MultiRobotPG(ros::NodeHandle) ;
+    ~MultiRobotPG() ;
   private:
     bool headless;
     int nRob ;     // number of robots
@@ -26,18 +26,19 @@ class MultiRobotNE{
     int nHidden ;  // number of hidden neurons
     int nPop ;     // population size
     int nEps ;     // number of learning epochs
+    double learning_rate ; 
     actFun afType;
     
     int epochCount ;   // epoch counter (number of evolutions)
-    int teamCount ;    // episode counter (number of tested policies in one evolution)
+    // int teamCount ;    // episode counter (number of tested policies in one evolution)
     
     unsigned seed ;
-    vector< vector<int> > teams ;
-    vector< vector<double> > rewards ;
-    vector<NeuroEvo *> robotTeam ;
+    vector<int> teams ; //vector< vector<int> > teams ;
+    vector<double> rewards ; //vector< vector<double> > rewards ;
+    vector<PolicyGrad *> robotTeam ;
     vector<double> rewardLog ;
-    double maxR ;
-    int maxTeam ;
+    //double maxR ;
+    //int maxTeam ;
     
     ros::Subscriber subResult ;
     void episodeCallback(const std_msgs::Float64&) ;
@@ -45,12 +46,12 @@ class MultiRobotNE{
     void NewEpisode() ;
 };
 
-MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
+MultiRobotPG::MultiRobotPG(ros::NodeHandle nh){
   
-  ROS_INFO("Initialising multi-robot neuro-evolution...") ;
+  ROS_INFO("Initialising multi-robot policy-gradient...") ;
   
   // Initialise learning domain
-  // Domain contains 2 NeuroEvo agents, each agent maintains a population of policies which are encoded as neural networks
+  // Domain contains 2 PolicyGrad agents, each agent maintains a population of policies which are encoded as neural networks
   // Neural networks are initialised according to size of input and output vectors, number of nodes in the hidden layer, and the activation function
   ros::param::get("headless", headless);
   ros::param::get("/learning/nRob", nRob);
@@ -72,103 +73,66 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   }
   
   for (int n = 0; n < nRob; n++){
-    NeuroEvo * NE = new NeuroEvo(nIn, nOut, nHidden, nPop, afType); 
-    robotTeam.push_back(NE) ;
+    PolicyGrad *PG = new PolicyGrad(nIn, nOut, nHidden, afType); 
+    robotTeam.push_back(PG) ;
   }
   
   // Logging
-  maxR = -DBL_MAX ;
-  maxTeam = 0 ;
+  // maxTeam = 0 ;
   epochCount = -1 ;
-  teamCount = 0 ;
   seed = std::chrono::system_clock::now().time_since_epoch().count() ;
   
   // Subscriber
-  subResult = nh.subscribe("/episode_result", 10, &MultiRobotNE::episodeCallback, this) ;
+  subResult = nh.subscribe("/episode_result", 10, &MultiRobotPG::episodeCallback, this) ;
   
   NewEpisode() ;
 }
   
-MultiRobotNE::~MultiRobotNE(){
+MultiRobotPG::~MultiRobotPG(){
   for (int n = 0; n < nRob; n++){
     delete robotTeam[n] ;
     robotTeam[n] = 0 ;
   }
 }
 
-void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
+void MultiRobotPG::episodeCallback(const std_msgs::Float64& msg){
   // Read out reward
   double r = msg.data ;
   for (int n = 0; n < nRob; n++){
-    rewards[n][teams[n][teamCount]] = r ;
+    rewards[n] = r ;
   }
-  if (r > maxR){
-    maxR = r ;
-    maxTeam = teamCount ;
+
+  rewardLog.push_back(r) ;
+  char strA[50] ;
+  char strB[50] ;
+  for (int n = 0; n < nRob; n++){
+    sprintf(strA,"weightsA%d.txt",n) ;
+    sprintf(strB,"weightsB%d.txt",n) ;
+    robotTeam[n]->OutputNN(strA,strB) ;
   }
   
-  teamCount++ ;
-  teamCount = teamCount % (nPop*2) ;
-  
-  if (teamCount % (nPop*2) == 0){
-    // Record champion team
-    rewardLog.push_back(maxR) ;
-    char strA[50] ;
-    char strB[50] ;
-    for (int n = 0; n < nRob; n++){
-      sprintf(strA,"weightsA%d.txt",n) ;
-      sprintf(strB,"weightsB%d.txt",n) ;
-      NeuralNet * bestNN = robotTeam[n]->GetNNIndex(teams[n][maxTeam]) ;
-      bestNN->OutputNN(strA,strB) ;
-    }
-    
-    // Compete (halves population size)
-    for (int n = 0; n < nRob; n++){
-      robotTeam[n]->EvolvePopulation(rewards[n]) ;
-    }
+  // Compete (halves population size)
+  //for (int n = 0; n < nRob; n++){
+  //  robotTeam[n]->EvolvePopulation(rewards[n]) ;
+  //}
+  //}
+
+  //TODO; implement policy gradient HERE:
+  for (int n = 0; n < nRob; n++){
+    robotTeam[n]->PolicyGradientStep(rewards[n]);
   }
   
   NewEpisode() ;
 }
 
-void MultiRobotNE::NewEpisode(){
-  // Initialise new epoch if all policies in current round have been tested
-  if (teamCount % (nPop*2) == 0){ // new epoch
-    epochCount++ ;
-    
-    // Container for storing population indices
-    vector<int> tt ;
-    for (int p = 0; p < nPop*2; p++){
-      tt.push_back(p) ;
-    }
-    teams.clear() ;
-      
-    // Container to store rewards
-    vector<double> rr(nPop*2,0.0) ;
-    rewards.clear() ;
-    
-    // Mutate populations (doubles population size)
-    for (int n = 0; n < nRob; n++){
-      robotTeam[n]->MutatePopulation() ;
-      
-      // Create randomised teams for this epoch
-      shuffle (tt.begin(), tt.end(), std::default_random_engine(seed)) ;
-      teams.push_back(tt) ;
-      
-      // Initialise reward container for this epoch
-      rewards.push_back(rr) ;
-    }
-  }
-  
+void MultiRobotPG::NewEpisode(){ 
   if (epochCount < nEps){ // Keep training!
-    ROS_INFO_STREAM("[Epoch " << epochCount << "] testing team number: " << teamCount) ;
+    ROS_INFO_STREAM("[Policy Gradient] Epoch " << epochCount) ;
     
     // Get policies for this team
     for (int n = 0; n < nRob; n++){
-      NeuralNet * curNN = robotTeam[n]->GetNNIndex(teams[n][teamCount]) ;
-      
       // Reshape weight matrices to single vector
-      MatrixXd A = curNN->GetWeightsA() ;
+      MatrixXd A = robotTeam[n]->GetWeightsA() ;
       vector<double> AA ;
       for (int ii = 0; ii < A.rows(); ii++){
         for (int jj = 0; jj < A.cols(); jj++){
@@ -176,7 +140,7 @@ void MultiRobotNE::NewEpisode(){
         }
       }
       
-      MatrixXd B = curNN->GetWeightsB() ;
+      MatrixXd B = robotTeam[n]->GetWeightsB() ;
       vector<double> BB ;
       for (int ii = 0; ii < B.rows(); ii++){
         for (int jj = 0; jj < B.cols(); jj++){
