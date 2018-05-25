@@ -26,7 +26,6 @@ class MultiRobotPG{
     int nHidden ;  // number of hidden neurons
     int nPop ;     // population size
     int nEps ;     // number of learning epochs
-    double learning_rate ; 
     actFun afType;
     
     int epochCount ;   // epoch counter (number of evolutions)
