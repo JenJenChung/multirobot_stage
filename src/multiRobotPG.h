@@ -118,7 +118,7 @@ void MultiRobotPG::episodeCallback(const std_msgs::Float64& msg){
 
   //TODO; implement policy gradient HERE:
   for (int n = 0; n < nRob; n++){
-    robotTeam[n]->PolicyGradientStep(rewards[n]);
+    //robotTeam[n]->PolicyGradientStep(rewards[n]);
   }
   
   NewEpisode() ;
