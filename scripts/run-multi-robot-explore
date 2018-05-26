@@ -9,7 +9,7 @@ then
   pid=$!
   echo "Launching Stage (headless) with $N_ROBOTS robots..."
 else
-  roslaunch multirobot_stage multirobot_stage.launch &
+  roslaunch multirobot_stage multirobot_stage.launch world_file:=small_office &
   pid=$!
   echo "Launching Stage with $N_ROBOTS robots..."
 fi
