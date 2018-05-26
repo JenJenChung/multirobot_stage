@@ -38,6 +38,9 @@ class MultiRobotNE{
     vector<double> rewardLog ;
     double maxR ;
     int maxTeam ;
+
+
+    std::string rewards_file_name = "rewards.csv";
     
     ros::Subscriber subResult ;
     void episodeCallback(const std_msgs::Float64&) ;
@@ -89,7 +92,6 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   subResult = nh.subscribe("/episode_result", 10, &MultiRobotNE::episodeCallback, this) ;
   
   // initialise log file
-  std::string rewards_file_name = "rewards.csv";
   std::ofstream rewards_file;
   rewards_file.open(rewards_file_name, std::ios_base::app);
   rewards_file << "episode_reward,max_reward,epoch_num,episode_num" << std::endl;
