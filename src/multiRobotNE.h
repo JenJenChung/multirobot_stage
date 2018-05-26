@@ -139,8 +139,8 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
 void MultiRobotNE::writeRewardsToFile(double reward) {
   std::ofstream rewards_file;
   rewards_file.open("rewards.txt", std::ios_base::app);
-  rewards_file << "episode reward: " << std::to_string(reward) << "\tmax reward: " << std::to_string(maxR) << "\tepoch num: " << 
-        std::to_string(epochCount) << "\tepisode num: " << std::to_string(teamCount) << std::endl;
+  rewards_file << "episode_reward: " << std::to_string(reward) << ",max_reward: " << std::to_string(maxR) << ",epoch_num: " << 
+        std::to_string(epochCount) << ",episode_num: " << std::to_string(teamCount) << std::endl;
 }
 
 void MultiRobotNE::NewEpisode(){
