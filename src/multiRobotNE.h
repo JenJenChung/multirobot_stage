@@ -88,6 +88,12 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   // Subscriber
   subResult = nh.subscribe("/episode_result", 10, &MultiRobotNE::episodeCallback, this) ;
   
+  // initialise log file
+  std::string rewards_file_name = "rewards.csv";
+  std::ofstream rewards_file;
+  rewards_file.open(rewards_file_name, std::ios_base::app);
+  rewards_file << "episode_reward,max_reward,epoch_num,episode_num" << std::endl;
+
   NewEpisode() ;
 }
   
@@ -138,9 +144,9 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
 
 void MultiRobotNE::writeRewardsToFile(double reward) {
   std::ofstream rewards_file;
-  rewards_file.open("rewards.txt", std::ios_base::app);
-  rewards_file << "episode_reward: " << std::to_string(reward) << ",max_reward: " << std::to_string(maxR) << ",epoch_num: " << 
-        std::to_string(epochCount) << ",episode_num: " << std::to_string(teamCount) << std::endl;
+  rewards_file.open(rewards_file_name, std::ios_base::app);
+  rewards_file << std::to_string(reward) << "," << std::to_string(maxR) << "," << 
+        std::to_string(epochCount) << "," << std::to_string(teamCount) << std::endl;
 }
 
 void MultiRobotNE::NewEpisode(){
