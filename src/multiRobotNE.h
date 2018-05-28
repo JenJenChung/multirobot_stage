@@ -7,6 +7,8 @@
 #include <Eigen/Eigen>
 #include <float.h>
 
+#include <boost/filesystem.hpp>
+
 #include "multirobot_stage/NeuroEvo.h"
 #include "multirobot_stage/NeuralNet.h"
 
@@ -39,7 +41,7 @@ class MultiRobotNE{
     double maxR ;
     int maxTeam ;
 
-
+    boost::filesystem::path log_dir;
     std::string rewards_file_name = "rewards.csv";
     
     ros::Subscriber subResult ;
@@ -87,13 +89,22 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   epochCount = -1 ;
   teamCount = 0 ;
   seed = std::chrono::system_clock::now().time_since_epoch().count() ;
-  
+
   // Subscriber
-  subResult = nh.subscribe("/episode_result", 10, &MultiRobotNE::episodeCallback, this) ;
-  
-  // initialise log file
+  subResult = nh.subscribe("/episode_result", 10, &MultiRobotNE::episodeCallback, this);
+
+  // initialise logging to file
+  // auto cur_time = std::chrono::system_clock::now();
+  // auto lt = std::localtime(cur_time);
+  auto ct = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::stringstream cur_time_and_date;
+  cur_time_and_date << std::put_time(std::localtime(&ct), "%F %T");
+  log_dir = boost::filesystem::path("logs" + cur_time_and_date.str());
+  boost::filesystem::create_directory(log_dir);
+  ros::param::set("/learning/log_dir", log_dir.string());
+
   std::ofstream rewards_file;
-  rewards_file.open(rewards_file_name, std::ios_base::app);
+  rewards_file.open(log_dir.string() + "/" + rewards_file_name, std::ios_base::app);
   rewards_file << "episode_reward,max_reward,epoch_num,episode_num" << std::endl;
 
   NewEpisode() ;
@@ -146,7 +157,7 @@ void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
 
 void MultiRobotNE::writeRewardsToFile(double reward) {
   std::ofstream rewards_file;
-  rewards_file.open(rewards_file_name, std::ios_base::app);
+  rewards_file.open(log_dir.string() + "/" + rewards_file_name, std::ios_base::app);
   rewards_file << std::to_string(reward) << "," << std::to_string(maxR) << "," << 
         std::to_string(epochCount) << "," << std::to_string(teamCount) << std::endl;
 }
@@ -211,6 +222,10 @@ void MultiRobotNE::NewEpisode(){
       sprintf(buffer,"/robot_%d/B",n) ;
       ros::param::set(buffer,BB) ;
     }
+
+    // store current episode and epoch number
+    ros::param::set("/learning/curEpisode", std::to_string(teamCount));
+    ros::param::set("/learning/curEpoch", std::to_string(epochCount));
     
     // Run stage simulation
     // Simulation nodes must initialise robots in stage

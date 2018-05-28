@@ -36,10 +36,17 @@ public:
 
     // initialize log file
     std::ofstream exploration_log_file;
-    exploration_log_file.open(exploration_log_file_name, std::ios_base::app);
-    exploration_log_file << "time,";
+    std::string curEpoch, curEpisode;
+    ros::param::get("/learning/curEpoch", curEpoch);
+    ros::param::get("/learning/curEpisode", curEpisode);
+    ros::param::get("/learning/log_dir", log_dir);
+
+    exploration_log_file_name = "explored_area" + curEpoch + "-" + curEpisode + ".csv";
+    ROS_INFO("=================> ExplorationRewards: writing file to %s\n", exploration_log_file_name.c_str());
+    exploration_log_file.open(log_dir + "/" + exploration_log_file_name, std::ios_base::app);
+    exploration_log_file << "time";
     for (auto &r : _robot_names) {
-      exploration_log_file << r + "_area,";
+      exploration_log_file << "," + r + "_area";
     }
     exploration_log_file << std::endl;
   }
@@ -55,5 +62,6 @@ private:
   std::map<std::string, float> _explored_areas;
   std::vector<std::string> _robot_names;
 
-  std::string exploration_log_file_name = "explored_area.csv";
+  std::string log_dir;
+  std::string exploration_log_file_name;
 };
