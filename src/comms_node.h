@@ -108,4 +108,6 @@ class comms_node
     std::map<std::string, boost::shared_ptr<nav_msgs::Odometry const>> _robot_odoms;
 
     std::vector<std::string> _robot_names;
+
+    float comms_range = 5.0;
 };

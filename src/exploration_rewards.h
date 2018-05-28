@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "nav_msgs/OccupancyGrid.h"
 #include "std_msgs/Float64.h"
 #include <ros/console.h>
@@ -31,6 +33,15 @@ public:
       _sub.insert(std::make_pair(_robot_names.back(), temp_map_sub));
     }
     _pub = _nHandle.advertise<std_msgs::Float64>("/reward", 10);
+
+    // initialize log file
+    std::ofstream exploration_log_file;
+    exploration_log_file.open(exploration_log_file_name, std::ios_base::app);
+    exploration_log_file << "time,";
+    for (auto &r : _robot_names) {
+      exploration_log_file << r + "_area,";
+    }
+    exploration_log_file << std::endl;
   }
   ~ExplorationRewards() {}
 
@@ -43,4 +54,6 @@ private:
 
   std::map<std::string, float> _explored_areas;
   std::vector<std::string> _robot_names;
+
+  std::string exploration_log_file_name = "explored_area.csv";
 };
