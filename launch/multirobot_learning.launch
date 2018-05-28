@@ -4,6 +4,7 @@
   <arg name="rviz_config" default="multirobot_stage"/>
 
   <rosparam command="load" file="$(find multirobot_stage)/scripts/learning_params.yaml"/>
+  <param name="use_sim_time" value="true"/>
   <param name="learning/nRob" value="$(arg nRob)"/>
   <param name="headless" value="$(arg headless)"/>
   <node pkg="multirobot_stage" type="multiRobotNE" name="multirobot_learning" output="screen"/>
