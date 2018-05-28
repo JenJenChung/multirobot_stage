@@ -276,7 +276,7 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(Eigen::MatrixXd &last_state, in
     last_action_index = action_index;
     Eigen::Vector3d action;
     if (action_index == -1){
-        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input to neural net. Performing 0 action");
+        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input/output to neural net (NaN). Performing 0 action");
         action << 0,0,0;
     } else if (action_index > -1){
         // convert NN output to feasible action on the map
@@ -331,7 +331,7 @@ void ActionNode::getAction(const Eigen::MatrixXd state, int &action_index){
     if (nn_input.maxCoeff()!=0){
         nn_input = nn_input/nn_input.maxCoeff(); // scale input
         Eigen::VectorXd nn_output = policy_.EvaluateNNSoftmax(nn_input); // Evaluate the network with the state as input
-        ROS_INFO_STREAM("Robot " << robot_id_ << ": NN output " << nn_output);
+        // ROS_INFO_STREAM("Robot " << robot_id_ << ": NN output " << nn_output);
         // sample from NN output
         if (std::isnan(nn_output.sum()) || std::isinf(nn_output.sum())){
             action_index = -1;
