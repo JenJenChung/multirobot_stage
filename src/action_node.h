@@ -72,8 +72,9 @@ class ActionNode{
         runMode mode_;
         runMeth method_;
 
-        float current_reward_;
-        float last_reward_;
+        double current_reward_;
+        double last_reward_;
+        double clearance_;
 
         std::default_random_engine generator_;
 
@@ -101,6 +102,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.param<std::string>("merged_map_topic", merged_map_topic, "map");
     nh_.param<std::string>("odom_topic", odom_topic, "odom");
     nh_.param<std::string>("reward_topic", reward_topic, "/reward");
+    nh_.param<double>("frontier_clearance", clearance_, 1);
     
     // load policy network and learning parameters
     int n_hidden;
@@ -208,8 +210,7 @@ void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     // ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
     current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
     // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
-    visualization_msgs::MarkerArray rec_map = polarToMarkerArray(current_state_, *(odoms_[robot_id_]));
-    rec_map_pub_.publish(rec_map);
+    rec_map_pub_.publish(polarToMarkerArray(current_state_, *(odoms_[robot_id_])));
 }
 
 void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::shared_ptr<nav_msgs::Odometry> msg_out){
@@ -222,16 +223,21 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::s
     if (map_frame[0]=='/'){map_frame.erase(0,1);}
     if (odom_frame[0]=='/'){odom_frame.erase(0,1);}
     try{
-      geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(map_frame, odom_frame, ros::Time(0));
-      geometry_msgs::PoseStamped pose_in, pose_out;
-      pose_in.header = msg_in->header;
-      pose_in.pose = msg_in->pose.pose;
-      tf2::doTransform(pose_in, pose_out, odom_trans);
-      msg_out->pose.pose = pose_out.pose;
-      msg_out->header = pose_out.header;
+        geometry_msgs::TransformStamped odom_trans = tfBuffer_.lookupTransform(map_frame, odom_frame, ros::Time(0));
+        geometry_msgs::PoseStamped pose_in, pose_out;
+        pose_in.header = msg_in->header;
+        pose_in.pose = msg_in->pose.pose;
+        tf2::doTransform(pose_in, pose_out, odom_trans);
+        msg_out->pose.pose = pose_out.pose;
+        msg_out->header = pose_out.header;
+
+        current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
+        // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
+        rec_map_pub_.publish(polarToMarkerArray(current_state_, *(odoms_[robot_id_])));
+
     } catch (tf2::TransformException &ex) {
-      ROS_WARN("%s", ex.what());
-      ros::Duration(1.0).sleep();
+        ROS_WARN("%s", ex.what());
+        ros::Duration(1.0).sleep();
     }
 }
 
@@ -276,19 +282,16 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(Eigen::MatrixXd &last_state, in
     last_action_index = action_index;
     Eigen::Vector3d action;
     if (action_index == -1){
-        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input/output to neural net (NaN). Performing 0 action");
+        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input/output to neural net (NaN). Performing 0 action.");
         action << 0,0,0;
     } else if (action_index > -1){
         // convert NN output to feasible action on the map
         action(0) = state(action_index,0); // direction to go to
-        action(1) = state(action_index,2); // distance to travel into direction, scaled by distance to frontier in that direction
+        action(1) = std::max(state(action_index,2)-clearance_,0.0); // distance to travel into direction (frontier-clearance_ or zero)
         action(2) = state(action_index,0); // new heading of the robot
     }
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Action (Eigen::Vector3d):\n" << action);
-    goal.target_pose.pose = polarToPose(action, current_odom);  // TODO: dereferecing occurring in correct order?
-
-    geometry_msgs::Twist waypoint = polarToTwist(action, current_odom);
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Converted waypoint (geometry_msgs/Twist):\n" << waypoint);
+    goal.target_pose.pose = polarToPose(action, current_odom);  // TODO: dereferencing occurring in correct order?
     return goal;
 }
 

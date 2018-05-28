@@ -16,26 +16,47 @@ using namespace Eigen ;
 
 class PolicyGrad : public NeuralNet {
   public:
-    PolicyGrad(size_t, size_t, size_t, actFun, double, double, double, double) ; // nIn, nOut, nHidden, activation function, learning rate, beta1, beta2, epsilon
+    PolicyGrad(int, int, int, actFun, double, double, double, double) ; // nIn, nOut, nHidden, activation function, learning rate, beta1, beta2, epsilon
     ~PolicyGrad(){};
     
-    void OutputGradient(VectorXd, size_t, MatrixXd&, MatrixXd&);
-    void PolicyGradientStep(VectorXd, size_t, double);
-    void PolicyGradientADAMStep(VectorXd, size_t, double);
+    void OutputGradient(VectorXd, int, MatrixXd&, MatrixXd&);
+    void PolicyGradientStep(VectorXd, int, double);
+    void PolicyGradientADAMStep(VectorXd, int, double);
     VectorXd EvaluateNNSoftmax(VectorXd);
     VectorXd EvaluateNNSoftmax(VectorXd, VectorXd &);
   private:
     VectorXd Softmax(VectorXd);
     actFun afType_;
-    double learning_rate_;
+    double alpha_;
     double beta1_;
     double beta2_;
     double eps_;
+
+    // ADAM variables:
+    int t_;
+    ArrayXd m_A_;
+    ArrayXd m_B_;
+    ArrayXd m_hA_;
+    ArrayXd m_hB_;
+    ArrayXd v_A_;
+    ArrayXd v_B_;
+    ArrayXd v_hA_;
+    ArrayXd v_hB_;
 } ;
-PolicyGrad::PolicyGrad(size_t nIn, size_t nOut, size_t nHidden, actFun afType=TANH,
+PolicyGrad::PolicyGrad(int nIn, int nOut, int nHidden, actFun afType=TANH,
 double learning_rate=0.001, double beta1=0.9, double beta2=0.999, double eps=10e-8):
   NeuralNet::NeuralNet(nIn, nOut, nHidden, afType, UNBOUNDED),
-  afType_(afType), learning_rate_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps) {}
+  afType_(afType), alpha_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps) {
+  t_ = 0;
+  m_A_ .resize(nIn, nHidden);
+  m_B_ .resize(nHidden+1, nOut);
+  m_hA_.resize(nIn, nHidden);
+  m_hB_.resize(nHidden+1, nOut);
+  v_A_ .resize(nIn, nHidden);
+  v_B_ .resize(nHidden+1, nOut);
+  v_hA_.resize(nIn, nHidden);
+  v_hB_.resize(nHidden+1, nOut);
+  }
 
 // Evaluate NN output given input vector
 VectorXd PolicyGrad::EvaluateNNSoftmax(VectorXd inputs){
@@ -50,53 +71,78 @@ VectorXd PolicyGrad::EvaluateNNSoftmax(VectorXd inputs, VectorXd & hiddenLayer){
 }
 
 // extend the neural network class with a member to perform a policy gradient step
-void PolicyGrad::PolicyGradientStep(VectorXd state, size_t action_index, double reward){
+void PolicyGrad::PolicyGradientStep(VectorXd state, int action_index, double reward){
   // calculate gradients dydA and dydB:
   VectorXd action = this->EvaluateNNSoftmax(state);
   MatrixXd A = this->GetWeightsA();
   MatrixXd B = this->GetWeightsB();
+  std::cout << "[PolicyGrad.h]\n|A|_2: " << A.norm() << std::endl << "|B|_2: " << B.norm() << std::endl;  
   MatrixXd dydA(A.rows(),A.cols());
   MatrixXd dydB(B.rows(),B.cols());
-  // std::cout << "[PolicyGrad.h] Getting gradient" <<std::endl;
   this->OutputGradient(state, action_index, dydA, dydB);
   
   //calculate weights
-  std::cout << "[PolicyGrad.h]\n|A|_2: " << A.norm() << std::endl << "|B|_2: " << B.norm() << std::endl;  
   // std::cout << "[PolicyGrad.h] action(action_index) " << action(action_index) <<std::endl;
   if (action(action_index)>0){
-    MatrixXd dA  = learning_rate_ * reward * 1/action(action_index) * dydA;
+    MatrixXd dA  = alpha_ * reward * 1/action(action_index) * dydA;
     // std::cout << "[PolicyGrad.h]  A.size() " << A.rows() << "," << A.cols() <<std::endl;
     // std::cout << "[PolicyGrad.h] dA.size() " << dA.rows() << "," << dA.cols() <<std::endl;
-    MatrixXd dB  = learning_rate_ * reward * 1/action(action_index) * dydB;
+    MatrixXd dB  = alpha_ * reward * 1/action(action_index) * dydB;
     // std::cout << "[PolicyGrad.h]  B.size() " << B.rows() << "," << B.cols() <<std::endl;
     // std::cout << "[PolicyGrad.h] dB.size() " << dB.rows() << "," << dB.cols() <<std::endl;
     std::cout << "[PolicyGrad.h]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
-    A = A + dA ;
-    B = B + dB ;
+    A += dA ;
+    B += dB ;
   }
   
   //set new NN weights
-  std::cout << "[PolicyGrad.h] |A_new|_2 " << A.norm() << std::endl;
-  std::cout << "[PolicyGrad.h] |B_new|_2 " << B.norm() << std::endl;
+  std::cout << "[PolicyGrad.h]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;  
   // std::cout << "[PolicyGrad.h] Setting new weights" <<std::endl;
   this->SetWeights(A,B);
 }
 
-void PolicyGrad::PolicyGradientADAMStep(VectorXd state, size_t action_index, double reward){
+void PolicyGrad::PolicyGradientADAMStep(VectorXd state, int action_index, double reward){
   //calculate gradient:
   VectorXd action = EvaluateNNSoftmax(state);
   MatrixXd A = this->GetWeightsA();
   MatrixXd B = this->GetWeightsB();
+  std::cout << "[PolicyGrad.h]\n|A|_2: " << A.norm() <<std::endl << "|B|_2 " << B.norm() << std::endl;
   MatrixXd dydA(A.rows(),A.cols());
   MatrixXd dydB(B.rows(),B.cols());
-  //std::cout << "[PolicyGrad.h] Getting gradient" <<std::endl;
   this->OutputGradient(state, action_index, dydA, dydB);
-  //calculate weights:
 
+  //calculate weights:  
+  if (action(action_index)>0){
+    MatrixXd dRdA  = alpha_ * reward * 1/action(action_index) * dydA;
+    MatrixXd dRdB  = alpha_ * reward * 1/action(action_index) * dydB;
+  
+    t_++;
+    m_A_ = beta1_ * m_A_ + (1-beta1_) * dRdA.array();
+    m_B_ = beta1_ * m_B_ + (1-beta1_) * dRdB.array();
+
+    v_A_ = beta2_ * v_A_ + (1-beta2_) * dRdA.array().square();
+    v_B_ = beta2_ * v_B_ + (1-beta2_) * dRdB.array().square();
+
+    m_hA_ = m_A_ / (1-pow(beta1_,t_));
+    m_hB_ = m_B_ / (1-pow(beta1_,t_));
+
+    v_hA_ = v_A_ / (1-pow(beta2_,t_));
+    v_hB_ = v_B_ / (1-pow(beta2_,t_));
+
+    MatrixXd dA = alpha_ * m_hA_ * (v_hA_.sqrt()+eps_).inverse();
+    MatrixXd dB = alpha_ * m_hB_ * (v_hB_.sqrt()+eps_).inverse();
+
+    std::cout << "[PolicyGrad.h]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl; 
+    A += dA;  
+    B += dB;  
+  }
+  
   //set new NN weights:
+  std::cout << "[PolicyGrad.h]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;
+  this->SetWeights(A,B);
 }
 
-void PolicyGrad::OutputGradient(VectorXd inputs, size_t oi, MatrixXd& dydA_oi, MatrixXd& dydB_oi){
+void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, MatrixXd& dydB_oi){
   //1. gradient of input  u = x'A:        du/dA = [x x x ...]
   //2. gradient of hidden h = sig(u):     dh/du = dsig(u)/du
   //3. gradient of output o = [h' 1]'B:   do/dh = B(0:end-1,:)
