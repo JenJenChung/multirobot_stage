@@ -37,6 +37,7 @@ public:
     // initialize log file
     std::ofstream exploration_log_file;
     exploration_log_file.open(exploration_log_file_name, std::ios_base::app);
+    exploration_log_file << "time,";
     for (auto &r : _robot_names) {
       exploration_log_file << r + "_area,";
     }

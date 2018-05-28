@@ -41,6 +41,7 @@ void ExplorationRewards::mapCallback(const boost::shared_ptr<nav_msgs::Occupancy
     // log current rewards to file
     std::ofstream exploration_log_file;
     exploration_log_file.open(exploration_log_file_name, std::ios_base::app);
+    exploration_log_file << ros::Time::now() << ",";
     for (auto &a : _explored_areas) {
       exploration_log_file << std::to_string(a.second) << ",";
     }
