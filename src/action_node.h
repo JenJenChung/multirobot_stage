@@ -68,7 +68,7 @@ class ActionNode{
         tf2_ros::Buffer tfBuffer_;
         tf2_ros::TransformListener tfListener_; 
 
-        PolicyGrad policy_;
+        PolicyGrad * policy_;
         runMode mode_;
         runMeth method_;
 
@@ -90,7 +90,7 @@ class ActionNode{
         
 };
 
-ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0, 0, LOGISTIC) {
+ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_) {
     nh_ = n;
 
     // Initialize ROS params:
@@ -107,7 +107,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     // load policy network and learning parameters
     int n_hidden;
     std::string aFun, mode, method;
-    nh_.param<int>("/learning/nBearings", n_th_, 256);
+    nh_.param<int>("/learning/nBearings", n_th_, 64);
     nh_.param<int>("/learning/nHidden", n_hidden, 256);
     nh_.param<std::string>("/learning/actFun", aFun, "logistic");
     nh_.param<std::string>("/learning/method", method, "NE");
@@ -118,6 +118,13 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.param<double>("/learning/beta2", beta2, 0.999);
     nh_.param<double>("/learning/eps", eps, 10e-8);
     
+    ROS_INFO_STREAM("network" << n_th_*(1+n_robots_) << " " << n_th_ << " " << n_hidden);
+    if (aFun=="tanh"){
+        policy_ = new PolicyGrad(n_th_*(1+n_robots_), n_th_, n_hidden, TANH, rate, beta1, beta2, eps);
+    } else {
+        policy_ = new PolicyGrad(n_th_*(1+n_robots_), n_th_, n_hidden, LOGISTIC, rate, beta1, beta2, eps);
+    }
+
     // load policy network weights
     std::vector<double> AA, BB;
     std::stringstream A_param, B_param;
@@ -126,7 +133,7 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
     nh_.getParam(A_param.str(), AA);
     nh_.getParam(B_param.str(), BB);
     MatrixXd A(n_th_*(1+n_robots_), n_hidden);
-    MatrixXd B(n_hidden+1, 3);
+    MatrixXd B(n_hidden+1, n_th_);
     if (AA.size()==0 || AA.size()==0){
         ROS_INFO_STREAM("Robot " << robot_id_ << ": Weight matrices randomly initialised!");
     } else {
@@ -144,15 +151,10 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_), policy_(0, 0,
                 ii++;
             }
         }
-        policy_.SetWeights(A, B);
+        policy_->SetWeights(A, B);
         ROS_INFO_STREAM("Robot " << robot_id_ << ": Weight matrices set by Rosparam!");
     }
     
-    if (aFun=="tanh"){
-        policy_ = PolicyGrad(n_th_*(1+n_robots_), n_th_, n_hidden, TANH, rate, beta1, beta2, eps);
-    } else {
-        policy_ = PolicyGrad(n_th_*(1+n_robots_), n_th_, n_hidden, LOGISTIC, rate, beta1, beta2, eps);
-    }
 
     if (mode=="executing"){
         mode_ = EXECUTING;
@@ -256,10 +258,10 @@ void ActionNode::updatePolicy(Eigen::MatrixXd &last_state, int &last_action_inde
         if (last_action_index>-1 && mode_==LEARNING){
             if (method_==PGA){
                 ROS_INFO_STREAM("Robot " << robot_id_ << ": Reward increment: " << reward << ". Updating policy with ADAM...");
-                policy_.PolicyGradientADAMStep(nn_input, last_action_index, reward);
+                policy_->PolicyGradientADAMStep(nn_input, last_action_index, reward);
             } else if (method_==PG){
                 ROS_INFO_STREAM("Robot " << robot_id_ << ": Reward increment: " << reward << ". Updating policy...");
-                policy_.PolicyGradientStep(nn_input, last_action_index, reward);
+                policy_->PolicyGradientStep(nn_input, last_action_index, reward);
             }
         } else {
             ROS_INFO_STREAM("Robot " << robot_id_ << ": No previous action available.");
@@ -297,14 +299,14 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(Eigen::MatrixXd &last_state, in
 
 void ActionNode::savePolicy(){
     // Reshape weight matrices to single vector
-    MatrixXd A = policy_.GetWeightsA() ;
+    MatrixXd A = policy_->GetWeightsA() ;
     vector<double> AA ;
     for (int ii = 0; ii < A.rows(); ii++){
         for (int jj = 0; jj < A.cols(); jj++){
             AA.push_back(A(ii,jj)) ;
         }
     }
-    MatrixXd B = policy_.GetWeightsB() ;
+    MatrixXd B = policy_->GetWeightsB() ;
     vector<double> BB ;
     for (int ii = 0; ii < B.rows(); ii++){
         for (int jj = 0; jj < B.cols(); jj++){
@@ -316,7 +318,7 @@ void ActionNode::savePolicy(){
     char strB[50] ;
     sprintf(strA,"weightsA%d.txt",robot_id_) ;
     sprintf(strB,"weightsB%d.txt",robot_id_) ;
-    policy_.OutputNN(strA,strB) ;
+    policy_->OutputNN(strA,strB) ;
 
     // Write NN policies to rosparams
     sprintf(strA,"/robot_%d/A",robot_id_) ;
@@ -333,7 +335,7 @@ void ActionNode::getAction(const Eigen::MatrixXd state, int &action_index){
     // ROS_INFO("M.size: (%ld, %ld) nn_input.size: (%ld, %ld)\n", M.rows(), M.cols(), nn_input.rows(), nn_input.cols());
     if (nn_input.maxCoeff()!=0){
         nn_input = nn_input/nn_input.maxCoeff(); // scale input
-        Eigen::VectorXd nn_output = policy_.EvaluateNNSoftmax(nn_input); // Evaluate the network with the state as input
+        Eigen::VectorXd nn_output = policy_->EvaluateNNSoftmax(nn_input); // Evaluate the network with the state as input
         // ROS_INFO_STREAM("Robot " << robot_id_ << ": NN output " << nn_output);
         // sample from NN output
         if (std::isnan(nn_output.sum()) || std::isinf(nn_output.sum())){

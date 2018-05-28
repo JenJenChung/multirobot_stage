@@ -16,6 +16,7 @@ using namespace Eigen ;
 
 class PolicyGrad : public NeuralNet {
   public:
+    PolicyGrad();
     PolicyGrad(int, int, int, actFun, double, double, double, double) ; // nIn, nOut, nHidden, activation function, learning rate, beta1, beta2, epsilon
     ~PolicyGrad(){};
     
@@ -34,29 +35,47 @@ class PolicyGrad : public NeuralNet {
 
     // ADAM variables:
     int t_;
-    ArrayXd m_A_;
-    ArrayXd m_B_;
-    ArrayXd m_hA_;
-    ArrayXd m_hB_;
-    ArrayXd v_A_;
-    ArrayXd v_B_;
-    ArrayXd v_hA_;
-    ArrayXd v_hB_;
+    ArrayXXd m_A_;
+    ArrayXXd m_B_;
+    ArrayXXd m_hA_;
+    ArrayXXd m_hB_;
+    ArrayXXd v_A_;
+    ArrayXXd v_B_;
+    ArrayXXd v_hA_;
+    ArrayXXd v_hB_;
 } ;
+
+PolicyGrad::PolicyGrad():
+  NeuralNet::NeuralNet(1, 1, 3),
+  afType_(TANH), alpha_(0.001), beta1_(0.9), beta2_(0.999), eps_(10e-8),
+  m_A_ (1, 4),
+  m_B_ (4, 1),
+  m_hA_(1, 4),
+  m_hB_(4, 1),
+  v_A_ (1, 4),
+  v_B_ (4, 1),
+  v_hA_(1, 4),
+  v_hB_(4, 1)
+  {
+  t_ = 0;
+}
+
+
 PolicyGrad::PolicyGrad(int nIn, int nOut, int nHidden, actFun afType=TANH,
 double learning_rate=0.001, double beta1=0.9, double beta2=0.999, double eps=10e-8):
   NeuralNet::NeuralNet(nIn, nOut, nHidden, afType, UNBOUNDED),
-  afType_(afType), alpha_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps) {
+  afType_(afType), alpha_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps),
+  m_A_ (nIn, nHidden),
+  m_B_ (nHidden+1, nOut),
+  m_hA_(nIn, nHidden),
+  m_hB_(nHidden+1, nOut),
+  v_A_ (nIn, nHidden),
+  v_B_ (nHidden+1, nOut),
+  v_hA_(nIn, nHidden),
+  v_hB_(nHidden+1, nOut)
+  {
   t_ = 0;
-  m_A_ .resize(nIn, nHidden);
-  m_B_ .resize(nHidden+1, nOut);
-  m_hA_.resize(nIn, nHidden);
-  m_hB_.resize(nHidden+1, nOut);
-  v_A_ .resize(nIn, nHidden);
-  v_B_ .resize(nHidden+1, nOut);
-  v_hA_.resize(nIn, nHidden);
-  v_hB_.resize(nHidden+1, nOut);
-  }
+}
 
 // Evaluate NN output given input vector
 VectorXd PolicyGrad::EvaluateNNSoftmax(VectorXd inputs){
@@ -76,7 +95,7 @@ void PolicyGrad::PolicyGradientStep(VectorXd state, int action_index, double rew
   VectorXd action = this->EvaluateNNSoftmax(state);
   MatrixXd A = this->GetWeightsA();
   MatrixXd B = this->GetWeightsB();
-  std::cout << "[PolicyGrad.h]\n|A|_2: " << A.norm() << std::endl << "|B|_2: " << B.norm() << std::endl;  
+  std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|A|_2: " << A.norm() << std::endl << "|B|_2: " << B.norm() << std::endl;  
   MatrixXd dydA(A.rows(),A.cols());
   MatrixXd dydB(B.rows(),B.cols());
   this->OutputGradient(state, action_index, dydA, dydB);
@@ -90,13 +109,18 @@ void PolicyGrad::PolicyGradientStep(VectorXd state, int action_index, double rew
     MatrixXd dB  = alpha_ * reward * 1/action(action_index) * dydB;
     // std::cout << "[PolicyGrad.h]  B.size() " << B.rows() << "," << B.cols() <<std::endl;
     // std::cout << "[PolicyGrad.h] dB.size() " << dB.rows() << "," << dB.cols() <<std::endl;
-    std::cout << "[PolicyGrad.h]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
-    A += dA ;
-    B += dB ;
+    if (std::isnan(dA.norm()) || std::isinf(dA.norm()) || std::isnan(dB.norm()) || std::isinf(dB.norm())){
+      std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl <<
+      "No weight update due to invalid delta. Consider changing learning params." <<std::endl;
+    } else {
+      std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
+      A += dA ;
+      B += dB ;
+    }
   }
   
   //set new NN weights
-  std::cout << "[PolicyGrad.h]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;  
+  std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;  
   // std::cout << "[PolicyGrad.h] Setting new weights" <<std::endl;
   this->SetWeights(A,B);
 }
@@ -106,7 +130,7 @@ void PolicyGrad::PolicyGradientADAMStep(VectorXd state, int action_index, double
   VectorXd action = EvaluateNNSoftmax(state);
   MatrixXd A = this->GetWeightsA();
   MatrixXd B = this->GetWeightsB();
-  std::cout << "[PolicyGrad.h]\n|A|_2: " << A.norm() <<std::endl << "|B|_2 " << B.norm() << std::endl;
+  std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|A|_2: " << A.norm() <<std::endl << "|B|_2 " << B.norm() << std::endl;
   MatrixXd dydA(A.rows(),A.cols());
   MatrixXd dydB(B.rows(),B.cols());
   this->OutputGradient(state, action_index, dydA, dydB);
@@ -132,13 +156,18 @@ void PolicyGrad::PolicyGradientADAMStep(VectorXd state, int action_index, double
     MatrixXd dA = alpha_ * m_hA_ * (v_hA_.sqrt()+eps_).inverse();
     MatrixXd dB = alpha_ * m_hB_ * (v_hB_.sqrt()+eps_).inverse();
 
-    std::cout << "[PolicyGrad.h]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl; 
-    A += dA;  
-    B += dB;  
+    if (std::isnan(dA.norm()) || std::isinf(dA.norm()) || std::isnan(dB.norm()) || std::isinf(dB.norm())){
+      std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl <<
+      "No weight update due to invalid delta. Consider changing learning params." <<std::endl;
+    } else {
+      std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
+      A += dA;  
+      B += dB;  
+    }
   }
   
   //set new NN weights:
-  std::cout << "[PolicyGrad.h]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;
+  std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;
   this->SetWeights(A,B);
 }
 
@@ -154,19 +183,19 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
   MatrixXd A, B;
   A = this->GetWeightsA();
   B = this->GetWeightsB();
-  std::cout << "[PolicyGrad.h]" << std::endl;
+  // std::cout << "[PolicyGrad.h]" << std::endl;
 
   //1. concatenate input vectors
   VectorXd x = inputs;
   MatrixXd dudA = MatrixXd::Zero(A.cols(),A.rows());
-  std::cout << "dudA.size(): " << dudA.rows() << "," << dudA.cols() << std::endl;
+  // std::cout << "dudA.size(): " << dudA.rows() << "," << dudA.cols() << std::endl;
   for (size_t i = 0; i<A.cols(); i++){
     dudA.row(i) = x;
   }
   //2. derivative of actfun evaluated at u
   VectorXd u = x.transpose()*A ;
   VectorXd dhdu(u.rows());
-  std::cout << "dhdu.size(): " << dhdu.rows() <<"," << dhdu.cols() << std::endl;
+  // std::cout << "dhdu.size(): " << dhdu.rows() <<"," << dhdu.cols() << std::endl;
   for (size_t i = 0; i<u.rows(); i++){
     //for (size_t j = 0; j<u.rows(); j++){
     if (afType_ == TANH){
@@ -186,7 +215,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
   
   //3. B(0:end-1,:)
   MatrixXd dodh = B.block(0,0,B.rows()-1,B.cols()).transpose();
-  std::cout << "dodh.size(): " << dodh.rows() <<"," << dodh.cols() << std::endl;
+  // std::cout << "dodh.size(): " << dodh.rows() <<"," << dodh.cols() << std::endl;
 
   //4. do/dB
   VectorXd h(u.rows());
@@ -200,7 +229,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
   VectorXd hp(h.rows()+1);
   hp << h, 1;
   MatrixXd dodB = MatrixXd::Zero(B.cols(),B.rows());
-  std::cout << "dodB.size(): " << dodB.rows() <<"," << dodB.cols() << std::endl;
+  // std::cout << "dodB.size(): " << dodB.rows() <<"," << dodB.cols() << std::endl;
   for (size_t i = 0; i<B.cols(); i++){
     dodB.row(i) = hp;
   }
@@ -208,7 +237,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
   //5. derivative of softmax evaluated at o
   VectorXd o = hp.transpose() * B ;
   MatrixXd dydo = MatrixXd::Zero(o.rows(),o.rows()) ;
-  std::cout << "dydo.size(): " << dydo.rows() <<"," << dydo.cols() << std::endl;
+  // std::cout << "dydo.size(): " << dydo.rows() <<"," << dydo.cols() << std::endl;
   for (size_t i=0; i<o.rows(); i++){
     for (size_t j=0; j<o.rows(); j++){
       if (i==j){
@@ -230,7 +259,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
     dydAp += dydo(oi,i) * dodA; // TODO verify this!
   }
   dydA_oi = dydAp.transpose();
-  std::cout << "dydA_oi.size(): " << dydA_oi.rows() <<"," << dydA_oi.cols() << std::endl;
+  // std::cout << "dydA_oi.size(): " << dydA_oi.rows() <<"," << dydA_oi.cols() << std::endl;
 
   //7. dy(oi)/dB
   dydB_oi.resize(B.rows(),B.cols());
@@ -239,7 +268,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
     dydBp.row(j) += dydo(oi,j) * dodB.row(j); 
   }
   dydB_oi = dydBp.transpose();
-  std::cout << "dydB_oi.size(): " << dydB_oi.rows() <<"," << dydB_oi.cols() << std::endl;
+  // std::cout << "dydB_oi.size(): " << dydB_oi.rows() <<"," << dydB_oi.cols() << std::endl;
 }
 
 VectorXd PolicyGrad::Softmax(VectorXd inputs){
