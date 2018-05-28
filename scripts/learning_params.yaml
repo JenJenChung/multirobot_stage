@@ -8,5 +8,8 @@ learning:
   nHidden: 400
   nPop: 2
   nEps: 5
-  actFun: "logistic" #output between 0 and 1
-  
+  actFun: "logistic"
+  rate: 0.0001
+  beta1: 0.9
+  beta2: 0.999
+  eps: 10e-8

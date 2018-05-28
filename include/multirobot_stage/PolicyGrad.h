@@ -33,7 +33,7 @@ class PolicyGrad : public NeuralNet {
     double eps_;
 } ;
 PolicyGrad::PolicyGrad(size_t nIn, size_t nOut, size_t nHidden, actFun afType=TANH,
-double learning_rate=0.001, double beta1=0.9, double beta2=0.999, double eps=pow(10,-8)):
+double learning_rate=0.001, double beta1=0.9, double beta2=0.999, double eps=10e-8):
   NeuralNet::NeuralNet(nIn, nOut, nHidden, afType, UNBOUNDED),
   afType_(afType), learning_rate_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps) {}
 
@@ -61,25 +61,23 @@ void PolicyGrad::PolicyGradientStep(VectorXd state, size_t action_index, double 
   this->OutputGradient(state, action_index, dydA, dydB);
   
   //calculate weights
-  // std::cout << "[PolicyGrad.h] |A|_2 " << A.norm() << std::endl;
-  // std::cout << "[PolicyGrad.h] |B|_2 " << B.norm() << std::endl;  
+  std::cout << "[PolicyGrad.h]\n|A|_2: " << A.norm() << std::endl << "|B|_2: " << B.norm() << std::endl;  
   // std::cout << "[PolicyGrad.h] action(action_index) " << action(action_index) <<std::endl;
   if (action(action_index)>0){
     MatrixXd dA  = learning_rate_ * reward * 1/action(action_index) * dydA;
     // std::cout << "[PolicyGrad.h]  A.size() " << A.rows() << "," << A.cols() <<std::endl;
     // std::cout << "[PolicyGrad.h] dA.size() " << dA.rows() << "," << dA.cols() <<std::endl;
-    // std::cout << "[PolicyGrad.h] |dA|_2 " << dA.norm() <<std::endl;
     MatrixXd dB  = learning_rate_ * reward * 1/action(action_index) * dydB;
     // std::cout << "[PolicyGrad.h]  B.size() " << B.rows() << "," << B.cols() <<std::endl;
     // std::cout << "[PolicyGrad.h] dB.size() " << dB.rows() << "," << dB.cols() <<std::endl;
-    // std::cout << "[PolicyGrad.h] |dB|_2 " << dB.norm() << std::endl;
+    std::cout << "[PolicyGrad.h]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
     A = A + dA ;
     B = B + dB ;
   }
   
   //set new NN weights
-  // std::cout << "[PolicyGrad.h] |A_new|_2 " << A.norm() << std::endl;
-  // std::cout << "[PolicyGrad.h] |B_new|_2 " << B.norm() << std::endl;
+  std::cout << "[PolicyGrad.h] |A_new|_2 " << A.norm() << std::endl;
+  std::cout << "[PolicyGrad.h] |B_new|_2 " << B.norm() << std::endl;
   // std::cout << "[PolicyGrad.h] Setting new weights" <<std::endl;
   this->SetWeights(A,B);
 }
