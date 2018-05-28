@@ -22,8 +22,8 @@ do
   roslaunch multirobot_stage single_slam.launch robot_name:=robot_$i &
   pid="$pid $!"
   
-  #roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
-  #pid="$pid $!"
+  # roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
+  # pid="$pid $!"
 
   roslaunch multirobot_stage multirobot_map_merge.launch robot_name:=robot_$i &
   pid="$pid $!"

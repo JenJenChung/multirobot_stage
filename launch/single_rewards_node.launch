@@ -1,0 +1,6 @@
+<launch>
+    <node respawn="true" pkg="multirobot_stage" type="rewards_node" name="rewards_node" output="screen">
+      <param name="merged_map_topic" value="/map"/>
+      <param name = "nRob" value="1"/>
+    </node>
+</launch>

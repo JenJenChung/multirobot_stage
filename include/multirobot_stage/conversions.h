@@ -14,15 +14,19 @@
 # include <tf/transform_datatypes.h>
 # include <visualization_msgs/MarkerArray.h>
 
-geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
-    geometry_msgs::Pose2D pose;
-    pose.x = odom.pose.pose.position.x;
-    pose.y = odom.pose.pose.position.y;
+geometry_msgs::Pose2D poseToPose2D(geometry_msgs::Pose pose){
+    geometry_msgs::Pose2D pose2D;
+    pose2D.x = pose.position.x;
+    pose2D.y = pose.position.y;
     Eigen::Quaterniond quat;
-    tf::quaternionMsgToEigen(odom.pose.pose.orientation, quat);
+    tf::quaternionMsgToEigen(pose.orientation, quat);
     Eigen::Vector3d euler = quat.toRotationMatrix().eulerAngles(2,1,0);
-    pose.theta = euler[0];
-    return pose;
+    pose2D.theta = euler(0);
+    return pose2D;
+}
+
+geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
+    return poseToPose2D(odom.pose.pose); 
 }
 
 Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::shared_ptr<nav_msgs::Odometry>> odomptrs, int robot_id, int n_robots, int n_th=4, double thresh=50){
@@ -95,16 +99,20 @@ geometry_msgs::Twist polarToTwist(const Eigen::Vector3d polar, nav_msgs::Odometr
 
 geometry_msgs::Pose polarToPose(const Eigen::Vector3d polar, nav_msgs::Odometry odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
+    //std::cout << "[polarToPose] odom:\n" << odom.pose.pose << std::endl << "robot:\n" << robot << std::endl;
     geometry_msgs::Pose pose;
     pose.position.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
     pose.position.y = sin(polar(0) + robot.theta) * polar(1) + robot.y;
     pose.position.z = 0;
     tf::Quaternion quat;  
-    quat.setEuler(0, 0, std::fmod(180/M_PI*(polar(2) + robot.theta),360));
+    double rot = std::fmod(polar(2) + robot.theta,2*M_PI);
+    //std::cout << "New Rotation " << rot << std::endl;
+    quat.setEuler(0,0,rot);
     pose.orientation.x = quat.x();
     pose.orientation.y = quat.y();
     pose.orientation.z = quat.z();
     pose.orientation.w = quat.w();
+    //std::cout << "[polarToPose] pose:\n" << pose << std::endl << "robot:\n" << poseToPose2D(pose) << std::endl;
     return pose;
 }
 

@@ -12,13 +12,13 @@ sleep 2s
 roslaunch multirobot_stage single_slam.launch robot_name:=robot_0 &
 pid="$pid $!"
 
-roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_0 &
-pid="$pid $!"
+# roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_0 &
+# pid="$pid $!"
 
 roslaunch multirobot_stage single_action_node.launch robot_id:=0 &
 pid="$pid $!"
 
-roslaunch multirobot_stage rewards_node.launch &
+roslaunch multirobot_stage single_rewards_node.launch &
 pid="$pid $!"
 
 # =========== END ROS simulation nodes =========== 
@@ -28,3 +28,5 @@ echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt
 # =========== START Learning epoch timer ===========
 rosparam load $(rospack find multirobot_stage)/scripts/learning_params.yaml
 rosrun multirobot_stage learning_episode_timer &
+
+trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
