@@ -29,11 +29,23 @@ void ExplorationRewards::mapCallback(const boost::shared_ptr<nav_msgs::Occupancy
     auto min_area = std::max_element(_explored_areas.begin(), _explored_areas.end(),
                                      [](const std::pair<std::string, float> &p1,
                                         const std::pair<std::string, float> &p2) { return p1.second > p2.second; });
+    // auto min_area = std::min_element(_explored_areas.begin(), _explored_areas.end(),
+    //                                  [](const std::pair<std::string, float> &p1,
+    //                                     const std::pair<std::string, float> &p2) { return p1.second < p2.second; });
 
     std_msgs::Float64 area_msg;
     area_msg.data = min_area->second;
     _pub.publish(area_msg);
     // ROS_INFO("current min area is by %s: %f\n", min_area->first.c_str(), min_area->second);
+
+    // log current rewards to file
+    std::ofstream exploration_log_file;
+    exploration_log_file.open(exploration_log_file_name, std::ios_base::app);
+    for (auto &a : _explored_areas) {
+      exploration_log_file << std::to_string(a.second) << ",";
+    }
+    exploration_log_file << std::endl;
+
   } else {
     ROS_INFO("_explored_areas still empty!\n");
   }
