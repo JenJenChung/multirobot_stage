@@ -70,4 +70,4 @@ To run the exploration instance, run:
 
 
 To run the learning instance, run:
-<pre><code>roslaunch multirobot_stage multirobot-learning.launch -nRob:=2 -headless:=false -method:=NE -mode:=learning</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (true) or not (false), the fourth argument is the learning method, neuroevolution, policy gradient or policy gradient with ADAM (NE, PG, PGA) and the last argument is if the simulation is in (learning, executing) mode.
+<pre><code>roslaunch multirobot_stage multirobot-learning.launch nRob:=2 headless:=false method:=NE mode:=learning</code></pre> The first argument is the number of robots (n), the second argument is if the program is executed headless (true) or not (false), the fourth argument is the learning method, neuroevolution, policy gradient or policy gradient with ADAM (NE, PG, PGA) and the last argument is if the simulation is in (learning, executing) mode.
