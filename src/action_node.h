@@ -2,24 +2,24 @@
 This is the action node of robot_ID
 
 Subscribed topics:
-- robot_ID/merged_map (OccupancyGrid)
+- robot_ID/comms_node/robot_ID/merged_map (OccupancyGrid)
 
 for i={0,..,n}
-    - robot_i/odom (Odometry)
+    - robot_ID/comms_node/robot_i/odom (Odometry)
 
 Published topics:
 - robot_ID/rec_map (VisualizationMarkerArray)
 
-
 Logic:
-    - subscribe to local shared map
+    - subscribe to local merged map
     - subscribe to odometries
     - while not finished:
         - calculate current_state_ according to map and last known odometries
-        - if ready_flag:
+        - if isDone():
+            - record reward and save and update policy (if learning)
             - getAction(current_state_)
-            - ready_flag=False # the ready flag will be set to True if the robot has reached the waypoint, conducted measurements and exchanged information
 */
+
 # include <ros/ros.h>
 # include <math.h>
 # include <algorithm> 
@@ -155,12 +155,12 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_) {
         ROS_INFO_STREAM("Robot " << robot_id_ << ": Weight matrices set by Rosparam!");
     }
     
-
     if (mode=="executing"){
         mode_ = EXECUTING;
     } else {
         mode_ = LEARNING;
     }
+
     if (method=="PG"){
         method_ = PG;
     } else if (method=="PGA"){
@@ -209,10 +209,6 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_) {
     
 void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     *merged_map_ = *msg;
-    // ROS_INFO("[mapCallback] merged_map_->header.frame_id: %s\n", merged_map_->header.frame_id.c_str());
-    current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
-    rec_map_pub_.publish(polarToMarkerArray(current_state_, *(odoms_[robot_id_])));
 }
 
 void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::shared_ptr<nav_msgs::Odometry> msg_out){
@@ -233,8 +229,7 @@ void ActionNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg_in, std::s
         msg_out->pose.pose = pose_out.pose;
         msg_out->header = pose_out.header;
 
-        current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_robots_, n_th_);
-        // ROS_INFO_STREAM("Robot " << robot_id_ << ": Current state:\n" << current_state_);
+        current_state_ = mapToPolar(*merged_map_, odoms_, robot_id_, n_th_);
         rec_map_pub_.publish(polarToMarkerArray(current_state_, *(odoms_[robot_id_])));
 
     } catch (tf2::TransformException &ex) {
@@ -254,8 +249,8 @@ void ActionNode::updatePolicy(Eigen::MatrixXd &last_state, int &last_action_inde
         nn_input = nn_input/nn_input.maxCoeff(); // scale input
 
         double reward = current_reward_ - last_reward_;
-        last_reward_ = current_reward_;
-        if (last_action_index>-1 && mode_==LEARNING){
+        if (last_action_index>-1 && last_reward_>0 && mode_==LEARNING){
+            last_reward_ = current_reward_;
             if (method_==PGA){
                 ROS_INFO_STREAM("Robot " << robot_id_ << ": Reward increment: " << reward << ". Updating policy with ADAM...");
                 policy_->PolicyGradientADAMStep(nn_input, last_action_index, reward);
@@ -264,37 +259,10 @@ void ActionNode::updatePolicy(Eigen::MatrixXd &last_state, int &last_action_inde
                 policy_->PolicyGradientStep(nn_input, last_action_index, reward);
             }
         } else {
-            ROS_INFO_STREAM("Robot " << robot_id_ << ": No previous action available.");
+            last_reward_ = current_reward_;
+            ROS_WARN_STREAM("Robot " << robot_id_ << ": No previous action available for policy update.");
         }
     }
-}
-
-move_base_msgs::MoveBaseGoal ActionNode::getGoal(Eigen::MatrixXd &last_state, int &last_action_index){
-    move_base_msgs::MoveBaseGoal goal;
-    nav_msgs::Odometry current_odom = *(odoms_[robot_id_]);
-    goal.target_pose.header = current_odom.header;
-    if (current_odom.header.frame_id.empty()){
-      goal.target_pose.header.frame_id = "/map";
-      ROS_WARN_STREAM("Robot " << robot_id_ << ": Empty frame received. Using default frame /map for goal.");
-    }
-    int action_index = -1;
-    Eigen::MatrixXd state = current_state_;
-    getAction(state, action_index);
-    last_state = state;
-    last_action_index = action_index;
-    Eigen::Vector3d action;
-    if (action_index == -1){
-        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input/output to neural net (NaN). Performing 0 action.");
-        action << 0,0,0;
-    } else if (action_index > -1){
-        // convert NN output to feasible action on the map
-        action(0) = state(action_index,0); // direction to go to
-        action(1) = std::max(state(action_index,2)-clearance_,0.0); // distance to travel into direction (frontier-clearance_ or zero)
-        action(2) = state(action_index,0); // new heading of the robot
-    }
-    ROS_INFO_STREAM("Robot " << robot_id_ << ": Action (Eigen::Vector3d):\n" << action);
-    goal.target_pose.pose = polarToPose(action, current_odom);  // TODO: dereferencing occurring in correct order?
-    return goal;
 }
 
 void ActionNode::savePolicy(){
@@ -327,6 +295,34 @@ void ActionNode::savePolicy(){
     ros::param::set(strB,BB) ;
 }
 
+move_base_msgs::MoveBaseGoal ActionNode::getGoal(Eigen::MatrixXd &last_state, int &last_action_index){
+    move_base_msgs::MoveBaseGoal goal;
+    nav_msgs::Odometry current_odom = *(odoms_[robot_id_]);
+    goal.target_pose.header = current_odom.header;
+    if (current_odom.header.frame_id.empty()){
+      goal.target_pose.header.frame_id = "/map";
+      ROS_WARN_STREAM("Robot " << robot_id_ << ": Empty frame received. Using default frame /map for goal.");
+    }
+    int action_index = -1;
+    Eigen::MatrixXd state = current_state_;
+    getAction(state, action_index);
+    last_state = state;
+    last_action_index = action_index;
+    Eigen::Vector3d action;
+    if (action_index == -1){
+        ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input/output to neural net (NaN). Performing 0 action.");
+        action << 0,0,0;
+    } else if (action_index > -1){
+        // convert NN output to feasible action on the map
+        action(0) = state(action_index,0); // direction to go to
+        action(1) = std::max(state(action_index,2)-clearance_,0.0); // distance to travel into direction (frontier-clearance_ or zero)
+        action(2) = state(action_index,0); // new heading of the robot
+    }
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": Action (Eigen::Vector3d):\n" << action);
+    goal.target_pose.pose = polarToPose(action, current_odom);  // TODO: dereferencing occurring in correct order?
+    return goal;
+}
+
 void ActionNode::getAction(const Eigen::MatrixXd state, int &action_index){
     // This method outputs an action belonging to a state according to the loaded policy
     // ROS_INFO("Starting getAction()\n");
@@ -338,7 +334,7 @@ void ActionNode::getAction(const Eigen::MatrixXd state, int &action_index){
         Eigen::VectorXd nn_output = policy_->EvaluateNNSoftmax(nn_input); // Evaluate the network with the state as input
         // ROS_INFO_STREAM("Robot " << robot_id_ << ": NN output " << nn_output);
         // sample from NN output
-        if (std::isnan(nn_output.sum()) || std::isinf(nn_output.sum())){
+        if (std::isnan(nn_output.norm()) || std::isinf(nn_output.norm())){
             action_index = -1;
         } else {
             std::vector<double> weights;
@@ -359,7 +355,7 @@ void ActionNode::actionThread(){
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac("move_base",true) ;
     actionlib::SimpleClientGoalState *goal_state = nullptr; 
     while(!ac.waitForServer(ros::Duration(5.0))){
-        ROS_INFO_STREAM("Robot " << robot_id_ << ": Waiting for the move_base action server to come up");
+        ROS_WARN_STREAM("Robot " << robot_id_ << ": Waiting for the move_base action server to come up");
     }
     Eigen::MatrixXd last_state(current_state_.rows(),current_state_.cols());
     int last_action_index = -1;
@@ -374,9 +370,11 @@ void ActionNode::actionThread(){
                 // ROS_INFO("Merged map not empty\n");
                 if (goal_state != nullptr){
                     if (goal_state->isDone()){  //
-                        ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
-                        savePolicy();
-                        updatePolicy(last_state, last_action_index);
+                        //ROS_INFO_STREAM("Robot " << robot_id_ << ": Ready. Getting next way point");
+                        if (mode_==LEARNING){
+                            savePolicy();
+                            updatePolicy(last_state, last_action_index);
+                        }
                         *goal_state = ac.sendGoalAndWait(getGoal(last_state, last_action_index));
                         if(*goal_state == actionlib::SimpleClientGoalState::SUCCEEDED){
                             ROS_INFO_STREAM("Robot " << robot_id_ << ": Waypoint reached.");
@@ -388,8 +386,10 @@ void ActionNode::actionThread(){
                     }
                 } else {
                     ROS_INFO_STREAM("Robot " << robot_id_ << ": No action status available. Starting exploration");
-                    savePolicy();
-                    updatePolicy(last_state, last_action_index);
+                    if (mode_==LEARNING){
+                        savePolicy();
+                        updatePolicy(last_state, last_action_index);
+                    }
                     goal_state = new actionlib::SimpleClientGoalState(ac.sendGoalAndWait(getGoal(last_state, last_action_index)));
                 }
             } else {

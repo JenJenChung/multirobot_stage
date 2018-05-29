@@ -29,8 +29,9 @@ geometry_msgs::Pose2D odomToPose2D(nav_msgs::Odometry odom){
     return poseToPose2D(odom.pose.pose); 
 }
 
-Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::shared_ptr<nav_msgs::Odometry>> odomptrs, int robot_id, int n_robots, int n_th=4, double thresh=50){
-    std::vector<nav_msgs::Odometry> odoms(odomptrs.size());
+Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::shared_ptr<nav_msgs::Odometry>> odomptrs, int robot_id, int n_th, double thresh=50){
+    int n_robots = odomptrs.size();
+    std::vector<nav_msgs::Odometry> odoms(n_robots);
     for (std::size_t i = 0; i<odoms.size(); i++){
         odoms[i] = *(odomptrs[i]);
     } 
@@ -51,7 +52,7 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
         while (looking){
             std::size_t x = round(cos(robot.theta + theta)*l + (robot.x-origin.x)/res);
             std::size_t y = round(sin(robot.theta + theta)*l + (robot.y-origin.y)/res);
-            if (x > map.info.width || y > map.info.height || x < 0 || y < 0){
+            if (x > map.info.width || y > map.info.height || x < 0 || y < 0){ // reached end of map
                 looking = false;
             } else {
                 std::size_t a = y*map.info.width + x;
@@ -85,17 +86,17 @@ Eigen::MatrixXd mapToPolar(const nav_msgs::OccupancyGrid &map, std::vector<std::
     return polar;
 }
 
-geometry_msgs::Twist polarToTwist(const Eigen::Vector3d polar, nav_msgs::Odometry odom){
-    geometry_msgs::Pose2D robot = odomToPose2D(odom);
-    geometry_msgs::Twist out;
-    out.linear.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
-    out.linear.y = sin(polar(0) + robot.theta) * polar(1) + robot.y;
-    out.linear.z = 0;
-    out.angular.x = 0;
-    out.angular.y = 0;
-    out.angular.z = std::fmod(180/M_PI*(polar(2) + robot.theta),360);
-    return out;
-}
+// geometry_msgs::Twist polarToTwist(const Eigen::Vector3d polar, nav_msgs::Odometry odom){
+//     geometry_msgs::Pose2D robot = odomToPose2D(odom);
+//     geometry_msgs::Twist out;
+//     out.linear.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
+//     out.linear.y = sin(polar(0) + robot.theta) * polar(1) + robot.y;
+//     out.linear.z = 0;
+//     out.angular.x = 0;
+//     out.angular.y = 0;
+//     out.angular.z = std::fmod(180/M_PI*(polar(2) + robot.theta),360);
+//     return out;
+// }
 
 geometry_msgs::Pose polarToPose(const Eigen::Vector3d polar, nav_msgs::Odometry odom){
     geometry_msgs::Pose2D robot = odomToPose2D(odom);
@@ -104,10 +105,8 @@ geometry_msgs::Pose polarToPose(const Eigen::Vector3d polar, nav_msgs::Odometry 
     pose.position.x = cos(polar(0) + robot.theta) * polar(1) + robot.x;
     pose.position.y = sin(polar(0) + robot.theta) * polar(1) + robot.y;
     pose.position.z = 0;
-    tf::Quaternion quat;  
-    double rot = std::fmod(polar(2) + robot.theta,2*M_PI);
-    //std::cout << "New Rotation " << rot << std::endl;
-    quat.setEuler(0,0,rot);
+    tf::Quaternion quat;
+    quat.setEuler(0,0,std::fmod(polar(2) + robot.theta,2*M_PI));
     pose.orientation.x = quat.x();
     pose.orientation.y = quat.y();
     pose.orientation.z = quat.z();
