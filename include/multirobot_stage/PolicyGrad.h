@@ -46,34 +46,32 @@ class PolicyGrad : public NeuralNet {
 } ;
 
 PolicyGrad::PolicyGrad():
-  NeuralNet::NeuralNet(1, 1, 3),
-  afType_(TANH), alpha_(0.001), beta1_(0.9), beta2_(0.999), eps_(10e-8),
-  m_A_ (1, 4),
-  m_B_ (4, 1),
-  m_hA_(1, 4),
-  m_hB_(4, 1),
-  v_A_ (1, 4),
-  v_B_ (4, 1),
-  v_hA_(1, 4),
-  v_hB_(4, 1)
-  {
+  NeuralNet::NeuralNet(1, 1, 3, TANH),
+  afType_(TANH), alpha_(0.001), beta1_(0.9), beta2_(0.999), eps_(1e-8){
+  m_A_ =ArrayXXd::Zero(1, 4);
+  m_B_ =ArrayXXd::Zero(4, 1);
+  m_hA_=ArrayXXd::Zero(1, 4);
+  m_hB_=ArrayXXd::Zero(4, 1);
+  v_A_ =ArrayXXd::Zero(1, 4);
+  v_B_ =ArrayXXd::Zero(4, 1);
+  v_hA_=ArrayXXd::Zero(1, 4);
+  v_hB_=ArrayXXd::Zero(4, 1);
   t_ = 0;
 }
 
 
 PolicyGrad::PolicyGrad(int nIn, int nOut, int nHidden, actFun afType=TANH,
-double learning_rate=0.001, double beta1=0.9, double beta2=0.999, double eps=10e-8):
+double learning_rate=0.001, double beta1=0.9, double beta2=0.999, double eps=1e-8):
   NeuralNet::NeuralNet(nIn, nOut, nHidden, afType, UNBOUNDED),
-  afType_(afType), alpha_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps),
-  m_A_ (nIn, nHidden),
-  m_B_ (nHidden+1, nOut),
-  m_hA_(nIn, nHidden),
-  m_hB_(nHidden+1, nOut),
-  v_A_ (nIn, nHidden),
-  v_B_ (nHidden+1, nOut),
-  v_hA_(nIn, nHidden),
-  v_hB_(nHidden+1, nOut)
-  {
+  afType_(afType), alpha_(learning_rate), beta1_(beta1), beta2_(beta2), eps_(eps){
+  m_A_ =ArrayXXd::Zero(nIn, nHidden);
+  m_B_ =ArrayXXd::Zero(nHidden+1, nOut);
+  m_hA_=ArrayXXd::Zero(nIn, nHidden);
+  m_hB_=ArrayXXd::Zero(nHidden+1, nOut);
+  v_A_ =ArrayXXd::Zero(nIn, nHidden);
+  v_B_ =ArrayXXd::Zero(nHidden+1, nOut);
+  v_hA_=ArrayXXd::Zero(nIn, nHidden);
+  v_hB_=ArrayXXd::Zero(nHidden+1, nOut);
   t_ = 0;
 }
 
@@ -111,16 +109,16 @@ void PolicyGrad::PolicyGradientStep(VectorXd state, int action_index, double rew
     // std::cout << "[PolicyGrad.h] dB.size() " << dB.rows() << "," << dB.cols() <<std::endl;
     if (std::isnan(dA.norm()) || std::isinf(dA.norm()) || std::isnan(dB.norm()) || std::isinf(dB.norm())){
       std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl <<
-      "No weight update due to invalid delta. Consider changing learning params." <<std::endl;
+      "No weight update due to invalid delta (Nan or Inf). Consider changing learning params." <<std::endl;
     } else {
-      std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
+      // std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
       A += dA ;
       B += dB ;
     }
   }
   
   //set new NN weights
-  std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;  
+  // std::cout << "[PolicyGrad.h - PolicyGradientStep]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;  
   // std::cout << "[PolicyGrad.h] Setting new weights" <<std::endl;
   this->SetWeights(A,B);
 }
@@ -130,45 +128,53 @@ void PolicyGrad::PolicyGradientADAMStep(VectorXd state, int action_index, double
   VectorXd action = EvaluateNNSoftmax(state);
   MatrixXd A = this->GetWeightsA();
   MatrixXd B = this->GetWeightsB();
-  std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|A|_2: " << A.norm() <<std::endl << "|B|_2 " << B.norm() << std::endl;
+  //std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|A|_2: " << A.norm() <<std::endl << "|B|_2 " << B.norm() << std::endl;
   MatrixXd dydA(A.rows(),A.cols());
   MatrixXd dydB(B.rows(),B.cols());
   this->OutputGradient(state, action_index, dydA, dydB);
 
   //calculate weights:  
   if (action(action_index)>0){
-    MatrixXd dRdA  = alpha_ * reward * 1/action(action_index) * dydA;
-    MatrixXd dRdB  = alpha_ * reward * 1/action(action_index) * dydB;
+    ArrayXXd dRdA  = reward * 1/action(action_index) * dydA;
+    ArrayXXd dRdB  = reward * 1/action(action_index) * dydB;
   
-    t_++;
-    m_A_ = beta1_ * m_A_ + (1-beta1_) * dRdA.array();
-    m_B_ = beta1_ * m_B_ + (1-beta1_) * dRdB.array();
-
-    v_A_ = beta2_ * v_A_ + (1-beta2_) * dRdA.array().square();
-    v_B_ = beta2_ * v_B_ + (1-beta2_) * dRdB.array().square();
-
-    m_hA_ = m_A_ / (1-pow(beta1_,t_));
-    m_hB_ = m_B_ / (1-pow(beta1_,t_));
-
-    v_hA_ = v_A_ / (1-pow(beta2_,t_));
-    v_hB_ = v_B_ / (1-pow(beta2_,t_));
-
-    MatrixXd dA = alpha_ * m_hA_ * (v_hA_.sqrt()+eps_).inverse();
-    MatrixXd dB = alpha_ * m_hB_ * (v_hB_.sqrt()+eps_).inverse();
-
-    if (std::isnan(dA.norm()) || std::isinf(dA.norm()) || std::isnan(dB.norm()) || std::isinf(dB.norm())){
-      std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl <<
-      "No weight update due to invalid delta. Consider changing learning params." <<std::endl;
+    if (std::isnan(dRdA.matrix().norm()) || std::isinf(dRdA.matrix().norm()) || std::isnan(dRdB.matrix().norm()) || std::isinf(dRdB.matrix().norm())){
+      std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|dRdA|_2: " << dRdA.matrix().norm() <<std::endl << "|dRdB|_2 " << dRdB.matrix().norm() << std::endl
+      << "No weight update due to invalid delta (Nan or Inf). Consider changing learning params." <<std::endl;
     } else {
-      std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
+      t_++;
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\nbeta1: " << beta1_ <<std::endl << "beta2 " << beta2_ << std::endl << "eps " << eps_ << std::endl;
+      m_A_ = beta1_ * m_A_ + (1-beta1_) * dRdA;
+      m_B_ = beta1_ * m_B_ + (1-beta1_) * dRdB;
+
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|m_A|_2: " << m_A_.matrix().norm() <<std::endl << "|m_B|_2 " << m_B_.matrix().norm() << std::endl;
+
+      v_A_ = beta2_ * v_A_ + (1-beta2_) * dRdA.square();
+      v_B_ = beta2_ * v_B_ + (1-beta2_) * dRdB.square();
+
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|v_A|_2: " << v_A_.matrix().norm() <<std::endl << "|v_B|_2 " << v_B_.matrix().norm() << std::endl;
+
+      m_hA_ = m_A_ / (1-pow(beta1_,t_));
+      m_hB_ = m_B_ / (1-pow(beta1_,t_));
+
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|m_hA|_2: " << m_hA_.matrix().norm() <<std::endl << "|m_hB|_2 " << m_hB_.matrix().norm() << std::endl;
+
+      v_hA_ = v_A_ / (1-pow(beta2_,t_));
+      v_hB_ = v_B_ / (1-pow(beta2_,t_));
+
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|v_hA|_2: " << v_hA_.matrix().norm() <<std::endl << "|v_hB|_2 " << v_hB_.matrix().norm() << std::endl;
+
+      MatrixXd dA = alpha_ * m_hA_ / (v_hA_.sqrt()+eps_);
+      MatrixXd dB = alpha_ * m_hB_ / (v_hB_.sqrt()+eps_);
+
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|dA|_2: " << dA.norm() <<std::endl << "|dB|_2 " << dB.norm() << std::endl;
       A += dA;  
       B += dB;  
+      //set new NN weights:
+      // std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;
+      this->SetWeights(A,B);
     }
   }
-  
-  //set new NN weights:
-  std::cout << "[PolicyGrad.h - PolicyGradientADAMStep]\n|A_new|_2: " << A.norm() << std::endl << "|B_new|_2: " << B.norm() << std::endl;
-  this->SetWeights(A,B);
 }
 
 void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, MatrixXd& dydB_oi){
@@ -201,7 +207,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
     if (afType_ == TANH){
       dhdu(i) = 1/pow(cosh(u(i)),2) ;
     } else if (afType_ == LOGISTIC){
-      dhdu(i) = exp(u(i))/pow(exp(u(i))+1,2) ;
+      dhdu(i) = exp(-u(i))/pow(exp(-u(i))+1,2) ;
     }
     //}
   }
@@ -254,7 +260,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
   for (size_t i=0; i<dodh.rows(); i++){
     MatrixXd dodA = MatrixXd::Zero(A.cols(),A.rows());
     for (size_t j=0; j<dhdA.rows(); j++){
-      dodA.row(j) += dodh(i,j) * dhdA.row(j); // dodh(i,j) * dhdu(j) * x; // TODO verify this!
+      dodA.row(j) = dodh(i,j) * dhdA.row(j); // dodh(i,j) * dhdu(j) * x; // TODO verify this!
     }
     dydAp += dydo(oi,i) * dodA; // TODO verify this!
   }
@@ -265,7 +271,7 @@ void PolicyGrad::OutputGradient(VectorXd inputs, int oi, MatrixXd& dydA_oi, Matr
   dydB_oi.resize(B.rows(),B.cols());
   MatrixXd dydBp = MatrixXd::Zero(B.cols(),B.rows());
   for (size_t j=0; j<dodB.rows(); j++){
-    dydBp.row(j) += dydo(oi,j) * dodB.row(j); 
+    dydBp.row(j) = dydo(oi,j) * dodB.row(j); 
   }
   dydB_oi = dydBp.transpose();
   // std::cout << "dydB_oi.size(): " << dydB_oi.rows() <<"," << dydB_oi.cols() << std::endl;
