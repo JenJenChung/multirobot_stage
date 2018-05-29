@@ -1,12 +1,12 @@
 learning:
   episode_length: 300.0 # length of each episode in seconds
   #nRob: 1 specified in command line argument
-  nBearings: 4
-  nIn: 8 # nBearings*(nRob+1), required by action node
-  nOut: 4 # nBearings
-  nHidden: 10
+  nBearings: 64
+  nIn: 192 # nBearings*(nRob+1), required by action node
+  nOut: 64 # nBearings
+  nHidden: 256
   nPop: 2
-  nEps: 5
+  nEps: 30
   actFun: "logistic"
   rate: 0.001
   beta1: 0.9
