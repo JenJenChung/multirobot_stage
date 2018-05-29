@@ -9,7 +9,7 @@
     <param name="robot_map_updates_topic" value="map_updates_republished"/>
     <param name="robot_namespace" value="$(arg robot_name)/comms_node"/>
     <param name="merged_map_topic" value="map_merge/map"/>
-    <param name="world_frame" value="/map"/>
+    <param name="world_frame" value="map"/>
     <param name="known_init_poses" value="true"/>
     <param name="merging_rate" value="0.5"/>
     <param name="discovery_rate" value="0.05"/>
@@ -18,14 +18,4 @@
   </node>
 </group>
 
-  <!-- <arg name="parent_frame" value="world"/>
-  <arg name="child_frame" value="map"/>
-  <arg name="dx" value="30"/>
-  <arg name="dy" value="30"/>
-  <arg name="dz" default="0"/>
-  <arg name="dyaw" default="0"/>
-  <arg name="dpitch" default="0"/>
-  <arg name="droll" default="0"/>  
-  <node pkg="tf" type="static_transform_publisher" name="$(arg parent_frame)_to_$(arg child_frame)_$(arg robot_name)" args="$(arg dx) $(arg dy) $(arg dz) $(arg dyaw) $(arg dpitch) $(arg droll) $(arg parent_frame) $(arg child_frame) 100"/>
-   -->
 </launch>
