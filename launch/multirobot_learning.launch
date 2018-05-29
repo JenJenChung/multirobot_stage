@@ -11,6 +11,7 @@
   <param name="learning/method" value="$(arg method)"/>
   <param name="learning/mode" value="$(arg mode)"/>
   <param name="headless" value="$(arg headless)"/>
+  <param name="comms_node/comms_range" value="10"/>
 
   <!-- <node pkg="multirobot_stage" type="multiRobotNE" name="multirobot_NeuroEvol" output="screen"/> -->
   <node pkg="multirobot_stage" type="multiRobotPG" name="multirobot_PolicyGrad" output="screen"/>

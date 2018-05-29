@@ -28,6 +28,8 @@ class comms_node
         // uint8_t num_robots = std::count_if(master_topics.begin(), master_topics.end(),
         //         std::regex_match(topic_strings, robot_topic_names));
 
+        _nh.param<float>("comms_range", comms_range, 5.0);
+
         uint8_t num_robots = 2;
         ROS_INFO("num_robots: %d\n", num_robots);
 
