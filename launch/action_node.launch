@@ -7,6 +7,7 @@
       <param name="root_namespace" value="robot"/>
       <param name="merged_map_topic" value="map_merge/map"/>
       <param name="odom_topic" value="odom"/>
+      <param name="frontier_clearance" value="2.5" />
     </node>
   </group>
 </launch>
