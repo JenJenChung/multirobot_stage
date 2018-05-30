@@ -22,72 +22,112 @@ using easymath::rand_interval ;
 using std::vector ;
 
 class NeuralNet{
-  public:
-    NeuralNet(size_t numIn, size_t numOut, size_t numHidden, actFun afType=TANH, nnOut bOut=BOUNDED) ; // single hidden layer
-    ~NeuralNet(){}
-    
-    VectorXd EvaluateNN(VectorXd inputs) ;
-    VectorXd EvaluateNN(VectorXd inputs, VectorXd & hiddenLayer) ;
-    void MutateWeights() ;
-    void SetWeights(MatrixXd, MatrixXd) ;
-    MatrixXd GetWeightsA() {return weightsA ;}
-    MatrixXd GetWeightsB() {return weightsB ;}
-    void OutputNN(const char *, const char *) ; // write NN weights to file
-    double GetEvaluation() {return evaluation ;}
-    void SetEvaluation(double eval) {evaluation = eval ;}
-    void BackPropagation(vector<VectorXd> trainInputs, vector<VectorXd> trainTargets) ;
-  private:
-    double bias ;
-    MatrixXd weightsA ;
-    MatrixXd weightsB ;
-    double mutationRate ;
-    double mutationStd ;
-    double evaluation ;
-    double eta ;
-    vector<size_t> layerActivation ;
+public:
+  NeuralNet(size_t numIn, size_t numOut, size_t numHidden, actFun afType = TANH,
+            nnOut bOut = BOUNDED); // single hidden layer
+  NeuralNet(size_t numIn, size_t numOut, size_t numHidden, MatrixXd pretrained_weightsA, MatrixXd pretrained_weightsB,
+            actFun afType = TANH, nnOut bOut = BOUNDED); // single hidden layer
+  ~NeuralNet() {}
 
-    void InitialiseWeights(MatrixXd &) ;
-    VectorXd (NeuralNet::*ActivationFunction)(VectorXd, size_t) ;
-    VectorXd HyperbolicTangent(VectorXd, size_t) ; // outputs between [-1,1]
-    VectorXd LogisticFunction(VectorXd, size_t) ; // outputs between [0,1]
-    double RandomMutation(double) ;
-    void WriteNN(MatrixXd, std::stringstream &) ;
-} ;
+  VectorXd EvaluateNN(VectorXd inputs);
+  VectorXd EvaluateNN(VectorXd inputs, VectorXd &hiddenLayer);
+  void MutateWeights();
+  void SetWeights(MatrixXd, MatrixXd);
+  MatrixXd GetWeightsA() { return weightsA; }
+  MatrixXd GetWeightsB() { return weightsB; }
+  void OutputNN(const char *, const char *); // write NN weights to file
+  double GetEvaluation() { return evaluation; }
+  void SetEvaluation(double eval) { evaluation = eval; }
+  void BackPropagation(vector<VectorXd> trainInputs, vector<VectorXd> trainTargets);
 
-// Constructor: Initialises NN given layer sizes, also initialises NN activation function, currently has hardcoded mutation rates, mutation value std and bias node value
-NeuralNet::NeuralNet(size_t numIn, size_t numOut, size_t numHidden, actFun afType, nnOut bOut){
-  bias = 1.0 ;
-  MatrixXd A(numIn, numHidden) ;
-  weightsA = A ;
-  MatrixXd B(numHidden+1, numOut) ;
-  weightsB = B ;
-  mutationRate = 0.5 ;
-  mutationStd = 1.0 ;
-  
-  if (afType == TANH){
-    ActivationFunction = &NeuralNet::HyperbolicTangent ;
+private:
+  double bias;
+  MatrixXd weightsA;
+  MatrixXd weightsB;
+  double mutationRate;
+  double mutationStd;
+  double evaluation;
+  double eta;
+  vector<size_t> layerActivation;
+
+  void InitialiseWeights(MatrixXd &);
+  VectorXd (NeuralNet::*ActivationFunction)(VectorXd, size_t);
+  VectorXd HyperbolicTangent(VectorXd, size_t); // outputs between [-1,1]
+  VectorXd LogisticFunction(VectorXd, size_t);  // outputs between [0,1]
+  double RandomMutation(double);
+  void WriteNN(MatrixXd, std::stringstream &);
+};
+
+// Constructor: Initialises NN given layer sizes, also initialises NN activation function, currently has hardcoded
+// mutation rates, mutation value std and bias node value
+NeuralNet::NeuralNet(size_t numIn, size_t numOut, size_t numHidden, actFun afType, nnOut bOut) {
+  bias = 1.0;
+  MatrixXd A(numIn, numHidden);
+  weightsA = A;
+  MatrixXd B(numHidden + 1, numOut);
+  weightsB = B;
+  mutationRate = 0.5;
+  mutationStd = 1.0;
+
+  if (afType == TANH) {
+    ActivationFunction = &NeuralNet::HyperbolicTangent;
+  } else if (afType == LOGISTIC) {
+    ActivationFunction = &NeuralNet::LogisticFunction;
+  } else {
+    std::cout << "ERROR: Unknown activation function type! Using default hyperbolic tangent function.\n";
+    ActivationFunction = &NeuralNet::HyperbolicTangent;
   }
-  else if (afType == LOGISTIC){
-    ActivationFunction = &NeuralNet::LogisticFunction ;
+
+  if (bOut == BOUNDED) {
+    layerActivation.push_back(0);
+    layerActivation.push_back(1);
+  } else {
+    layerActivation.push_back(0);
+    layerActivation.push_back(2);
   }
-  else{
-    std::cout << "ERROR: Unknown activation function type! Using default hyperbolic tangent function.\n" ;
-    ActivationFunction = &NeuralNet::HyperbolicTangent ;
+
+  ROS_INFO("Using new weights\n");
+  InitialiseWeights(weightsA);
+  InitialiseWeights(weightsB);
+
+  eta = 0.0001; // learning rate for backprop
+  ROS_INFO("Finished NeuralNet() constructor\n");
+}
+
+// overloaded constructor
+NeuralNet::NeuralNet(size_t numIn, size_t numOut, size_t numHidden, MatrixXd pretrained_weightsA,
+                     MatrixXd pretrained_weightsB, actFun afType, nnOut bOut) {
+  bias = 1.0;
+  MatrixXd A(numIn, numHidden);
+  weightsA = A;
+  MatrixXd B(numHidden + 1, numOut);
+  weightsB = B;
+  mutationRate = 0.5;
+  mutationStd = 1.0;
+
+  if (afType == TANH) {
+    ActivationFunction = &NeuralNet::HyperbolicTangent;
+  } else if (afType == LOGISTIC) {
+    ActivationFunction = &NeuralNet::LogisticFunction;
+  } else {
+    std::cout << "ERROR: Unknown activation function type! Using default hyperbolic tangent function.\n";
+    ActivationFunction = &NeuralNet::HyperbolicTangent;
   }
-  
-  if (bOut == BOUNDED){
-    layerActivation.push_back(0) ;
-    layerActivation.push_back(1) ;
+
+  if (bOut == BOUNDED) {
+    layerActivation.push_back(0);
+    layerActivation.push_back(1);
+  } else {
+    layerActivation.push_back(0);
+    layerActivation.push_back(2);
   }
-  else{
-    layerActivation.push_back(0) ;
-    layerActivation.push_back(2) ;
-  }
-    
-  InitialiseWeights(weightsA) ;
-  InitialiseWeights(weightsB) ;
-  
-  eta = 0.0001 ; // learning rate for backprop
+  ROS_INFO("Using pre-trained weights!\n");
+  ROS_INFO("pretrained weights size: (%d, %d) and weightsA size: (%d, %d)\n", pretrained_weightsA.rows(), pretrained_weightsA.cols(), weightsA.rows(), weightsA.cols());
+  weightsA = pretrained_weightsA;
+  weightsB = pretrained_weightsB;
+
+  ROS_INFO("end of NeuralNet() constructor with pre-trained weights\n");
+  eta = 0.0001; // learning rate for backprop
 }
 
 // Evaluate NN output given input vector

@@ -12,9 +12,10 @@
   <param name="learning/mode" value="$(arg mode)"/>
   <param name="headless" value="$(arg headless)"/>
   <param name="comms_node/comms_range" value="10"/>
+  <param name="learning/pretrained_weights_dir" value="/home/ben/.ros/"/>
 
-  <!-- <node pkg="multirobot_stage" type="multiRobotNE" name="multirobot_NeuroEvol" output="screen"/> -->
-  <node pkg="multirobot_stage" type="multiRobotPG" name="multirobot_PolicyGrad" output="screen"/>
+  <node pkg="multirobot_stage" type="multiRobotNE" name="multirobot_NeuroEvol" output="screen"/>
+  <!-- <node pkg="multirobot_stage" type="multiRobotPG" name="multirobot_PolicyGrad" output="screen"/> -->
 
   <!-- Visualize -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multirobot_stage)/launch/$(arg rviz_config).rviz"/>

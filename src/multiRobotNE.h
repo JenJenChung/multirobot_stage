@@ -5,9 +5,11 @@
 #include <algorithm>
 #include <chrono>
 #include <Eigen/Eigen>
+#include <Eigen/StdVector>
 #include <float.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "multirobot_stage/NeuroEvo.h"
 #include "multirobot_stage/NeuralNet.h"
@@ -43,17 +45,19 @@ class MultiRobotNE{
 
     boost::filesystem::path log_dir;
     std::string rewards_file_name = "rewards.csv";
-    
-    ros::Subscriber subResult ;
-    void episodeCallback(const std_msgs::Float64&) ;
-    
-    void NewEpisode() ;
+
+    ros::Subscriber subResult;
+    void episodeCallback(const std_msgs::Float64 &);
+
+    void NewEpisode();
     void writeRewardsToFile(double reward);
-    
+    void readFile(std::string file_path, std::vector<double> &file);
+    bool loadWeights(std::string weights_dir, int index,
+                     std::vector<std::pair<Eigen::MatrixXd, Eigen::MatrixXd>> &loaded_weights);
 };
 
-MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
-  
+MultiRobotNE::MultiRobotNE(ros::NodeHandle nh) {
+
   ROS_INFO("Initialising multi-robot neuro-evolution...") ;
   
   // Initialise learning domain
@@ -68,6 +72,7 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
   ros::param::get("/learning/nEps", nEps);
   std::string aFun;
   ros::param::get("/learning/actFun", aFun);
+ 
 
   if (aFun == "tanh"){
     afType = TANH;
@@ -78,10 +83,33 @@ MultiRobotNE::MultiRobotNE(ros::NodeHandle nh){
     afType = LOGISTIC;
   }
   
+  std::string weights_dir = "";
+  ros::param::get("/learning/pretrained_weights_dir", weights_dir);
+
   for (int n = 0; n < nRob; n++){
-    NeuroEvo * NE = new NeuroEvo(nIn, nOut, nHidden, nPop, afType); 
-    robotTeam.push_back(NE) ;
+    // if pretrained_weights_dir rosparam is set, load those weights and continue training from there
+    if (weights_dir != "") {
+      // reuse pre-trained weights
+      ROS_INFO("Reusing pre-trained weights\n");
+      std::vector<std::pair<Eigen::MatrixXd, Eigen::MatrixXd>> pretrained_weights;
+      if (loadWeights(weights_dir, n, pretrained_weights)) {
+        ROS_INFO("loading pretrained weights succeeded...\n");
+        NeuroEvo *NE = new NeuroEvo(nIn, nOut, nHidden, nPop, pretrained_weights, afType);
+        robotTeam.push_back(NE);
+      } else {
+        ROS_WARN("Error loading weights, starting with fresh weights...\n");
+        NeuroEvo *NE = new NeuroEvo(nIn, nOut, nHidden, nPop, afType);
+        robotTeam.push_back(NE);
+      }
+    } else {
+      // start with fresh weights
+      ROS_INFO("Starting with some fresh weights\n");
+      NeuroEvo *NE = new NeuroEvo(nIn, nOut, nHidden, nPop, afType);
+      robotTeam.push_back(NE);
+    }
   }
+
+  ROS_INFO("Finished setup\n");
   
   // Logging
   maxR = -DBL_MAX ;
@@ -115,6 +143,64 @@ MultiRobotNE::~MultiRobotNE(){
     delete robotTeam[n] ;
     robotTeam[n] = 0 ;
   }
+}
+
+void MultiRobotNE::readFile(std::string file_path, std::vector<double>& file) {
+  std::ifstream file_stream;
+  file_stream.open(file_path, std::ios_base::in);
+  // std::string wA = wA_file
+  // Eigen::MatrixXd
+  std::string cell;
+
+  // read entire file into a vector and reshape it into the size we need.
+  while (std::getline(file_stream, cell, ',')) {
+    if (file_stream && !cell.empty() && (cell != "\n")) {
+      // printf("<%s>", cell.c_str());
+      // file.push_back(boost::lexical_cast<float>(cell));
+      file.push_back(std::stof(cell.c_str()));
+    } else {
+      printf("Finished reading weights file\n");
+    }
+  }
+  // // This checks for a trailing comma with no data after it.
+  // if (!file_stream && cell.empty())
+  // {
+  //     // If there was a trailing comma then add an empty element.
+  //     file.push_back("");
+  // }
+  printf("\n");
+  // ROS_INFO("Len of file vector: %d", file.size());
+}
+
+bool MultiRobotNE::loadWeights(std::string weights_dir, int index,
+                               std::vector<std::pair<Eigen::MatrixXd, Eigen::MatrixXd>> &loaded_weights) {
+  // TODO: currently NE only stores the best weights after each epoch. The way things are setup now is that for every
+  // robot, each population starts with the same weights. Consider another approach.
+  ROS_INFO("loadWeights()\n");
+  std::string wA_path = weights_dir + "weightsA" + std::to_string(index) + ".txt";
+  std::string wB_path = weights_dir + "weightsB" + std::to_string(index) + ".txt";
+  std::vector<double> wA, wB;
+  readFile(wA_path, wA);
+  readFile(wB_path, wB);
+  ROS_INFO("Len of wA vector: %d\n", wA.size());
+  ROS_INFO("Len of wB vector: %d\n", wB.size());
+
+  Eigen::VectorXd vec_wA = Eigen::VectorXd::Map(wA.data(), wA.size());
+  Eigen::VectorXd vec_wB = Eigen::VectorXd::Map(wB.data(), wB.size());
+  ROS_INFO("Len of vec_wA vector: %d\n", vec_wA.size());
+
+  // reshape vec_wA to matrix of size numIn x numHidden and vec_wB to numHidden + 1 x numOut
+  // Eigen::MatrixXd mat_wA(vec_wA.matrix().data(), nIn, nHidden);
+  // Eigen::MatrixXd mat_wB(vec_wB.matrix().data(), nHidden + 1, nOut);
+  Eigen::Map<Eigen::MatrixXd> mat_wA(&wA.data()[0], nIn, nHidden);
+  Eigen::Map<Eigen::MatrixXd> mat_wB(&wB.data()[0], nHidden + 1, nOut);
+  
+  ROS_INFO("Size of mat_wA matrix: (%d x %d)\n", mat_wA.rows(), mat_wA.cols());
+  ROS_INFO("Size of mat_wB matrix: (%d x %d)\n", mat_wB.rows(), mat_wB.cols());
+
+  loaded_weights.push_back(std::make_pair(mat_wA, mat_wB));  //TODO: need eigen aligned_allocator?
+
+  return true;
 }
 
 void MultiRobotNE::episodeCallback(const std_msgs::Float64& msg){
@@ -181,7 +267,6 @@ void MultiRobotNE::NewEpisode(){
     // Mutate populations (doubles population size)
     for (int n = 0; n < nRob; n++){
       robotTeam[n]->MutatePopulation() ;
-      
       // Create randomised teams for this epoch
       shuffle (tt.begin(), tt.end(), std::default_random_engine(seed)) ;
       teams.push_back(tt) ;

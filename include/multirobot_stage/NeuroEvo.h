@@ -15,43 +15,64 @@ using std::sort ;
 using namespace Eigen ;
 
 class NeuroEvo{
-  public:
-    NeuroEvo(size_t, size_t, size_t, size_t, actFun afType=TANH) ; // nIn, nOut, nHidden, popSize, activation function
-    ~NeuroEvo() ;
-    
-    void MutatePopulation() ;
-    void EvolvePopulation(vector<double>) ;
-    vector<double> GetAllEvaluations() ;
-    
-    NeuralNet * GetNNIndex(size_t i){return populationNN[i] ;}
-    size_t GetCurrentPopSize(){return populationNN.size() ;}
-    
-    void SetMutationNormLog(bool b=true){computeMutationNorms = b ;}
-    vector<double> GetMutationNorm(){return mutationFrobeniusNorm ;}
-  private:
-    size_t numIn ;
-    size_t numOut ;
-    size_t numHidden ;
-    actFun activationFunction ;
-    
-    size_t populationSize ;
-    vector<NeuralNet *> populationNN ;
-    
-    void (NeuroEvo::*SurvivalFunction)() ;
-    void BinaryTournament() ;
-    void RetainBestHalf() ;
-    static bool CompareEvaluations(NeuralNet *, NeuralNet *) ;
-    
-    bool computeMutationNorms ;
-    vector<double> mutationFrobeniusNorm ;
-    double ComputeFrobeniusNorm(MatrixXd, MatrixXd, MatrixXd, MatrixXd) ;
-} ;
+public:
+  NeuroEvo(size_t, size_t, size_t, size_t, actFun afType = TANH); // nIn, nOut, nHidden, popSize, activation function
+  NeuroEvo(size_t nIn, size_t nOut, size_t nHidden, size_t pSize,
+           std::vector<std::pair<MatrixXd, MatrixXd>> weights_and_biases, actFun afType = TANH);
+  ~NeuroEvo();
+
+  void MutatePopulation();
+  void EvolvePopulation(vector<double>);
+  vector<double> GetAllEvaluations();
+
+  NeuralNet *GetNNIndex(size_t i) { return populationNN[i]; }
+  size_t GetCurrentPopSize() { return populationNN.size(); }
+
+  void SetMutationNormLog(bool b = true) { computeMutationNorms = b; }
+  vector<double> GetMutationNorm() { return mutationFrobeniusNorm; }
+
+private:
+  size_t numIn;
+  size_t numOut;
+  size_t numHidden;
+  actFun activationFunction;
+
+  size_t populationSize;
+  vector<NeuralNet *> populationNN;
+
+  void (NeuroEvo::*SurvivalFunction)();
+  void BinaryTournament();
+  void RetainBestHalf();
+  static bool CompareEvaluations(NeuralNet *, NeuralNet *);
+
+  bool computeMutationNorms;
+  vector<double> mutationFrobeniusNorm;
+  double ComputeFrobeniusNorm(MatrixXd, MatrixXd, MatrixXd, MatrixXd);
+};
 
 // Constructor: Initialises all NN in population, given NN layer sizes and population size, also sets SurvivalFunction
-NeuroEvo::NeuroEvo(size_t nIn, size_t nOut, size_t nHidden, size_t pSize, actFun afType): numIn(nIn), numOut(nOut), numHidden(nHidden), activationFunction(afType), populationSize(pSize){
-  for (size_t i = 0; i < populationSize; i++)
-    populationNN.push_back(new NeuralNet(numIn, numOut, numHidden, afType)) ;
-  SurvivalFunction = &NeuroEvo::BinaryTournament ; // how to decide which NNs to retain after each round of evolution
+NeuroEvo::NeuroEvo(size_t nIn, size_t nOut, size_t nHidden, size_t pSize, actFun afType)
+    : numIn(nIn), numOut(nOut), numHidden(nHidden), activationFunction(afType), populationSize(pSize) {
+  for (size_t i = 0; i < populationSize; i++) {
+    ROS_INFO("Normal NeuroEvo constructor\n");
+    populationNN.push_back(new NeuralNet(numIn, numOut, numHidden, afType));
+  }
+  SurvivalFunction = &NeuroEvo::BinaryTournament; // how to decide which NNs to retain after each round of evolution
+}
+
+// Overloaded constructor for cases where we want to load the weights from an existing file.
+// Need to pass one weight and one bias file per member of the population
+NeuroEvo::NeuroEvo(size_t nIn, size_t nOut, size_t nHidden, size_t pSize,
+                   std::vector<std::pair<MatrixXd, MatrixXd>> weights_and_biases, actFun afType)
+    : numIn(nIn), numOut(nOut), numHidden(nHidden), activationFunction(afType), populationSize(pSize) {
+
+  ROS_INFO("Loading existing weights from file...\n");
+  for (size_t i = 0; i < populationSize; i++) {
+    // call NeuralNet constructor that takes weight matrixes as arguments
+    populationNN.push_back(
+        new NeuralNet(numIn, numOut, numHidden, weights_and_biases[0].first, weights_and_biases[0].second, afType)); //TODO: change index from 0 to i, make sure vector contains enough elements
+  }
+  SurvivalFunction = &NeuroEvo::BinaryTournament; // how to decide which NNs to retain after each round of evolution
 }
 
 // Destructor: Deletes all NN objects from population
