@@ -3,7 +3,7 @@
 # =========== START ROS simulation nodes =========== 
 N_ROBOTS=$1
 HEADLESS=$2
-WORLD_FILE=map3
+WORLD_FILE=map4
 if [ $HEADLESS == "1" ]
 then
   roslaunch multirobot_stage multirobot_stage_headless.launch world_file:=$WORLD_FILE &

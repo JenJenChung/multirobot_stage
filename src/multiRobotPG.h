@@ -115,6 +115,10 @@ void MultiRobotPG::episodeCallback(const std_msgs::Float64& msg){
 void MultiRobotPG::NewEpisode(){ 
   if (epochCount < nEps){ // Keep training!
     ROS_INFO_STREAM("[Policy Gradient] Epoch " << epochCount) ;  
+    epochCount++;
+    // ros::param::set("/learning/curEpisode", std::to_string(teamCount));
+    ros::param::set("/learning/curEpoch", std::to_string(epochCount));
+
     // Run stage simulation
     // Simulation nodes must initialise robots in stage
     // Nodes must also read in ROS params for robot control policies
