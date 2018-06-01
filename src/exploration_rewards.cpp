@@ -33,10 +33,15 @@ void ExplorationRewards::mapCallback(const boost::shared_ptr<nav_msgs::Occupancy
     //                                  [](const std::pair<std::string, float> &p1,
     //                                     const std::pair<std::string, float> &p2) { return p1.second < p2.second; });
 
-    auto mean_area = std::accumulate(_explored_areas.begin(), _explored_areas.end(), 0.0) / _explored_areas.size();
+    float mean_area = 0.0;
+    for (auto &a : _explored_areas) {
+      mean_area += a.second;
+    }
+    mean_area /= _explored_areas.size();
 
     std_msgs::Float64 area_msg;
-    area_msg.data = mean_area->second;
+    // area_msg.data = min_area->second;
+    area_msg.data = mean_area;
     _pub.publish(area_msg);
     // ROS_INFO("current min area is by %s: %f\n", min_area->first.c_str(), min_area->second);
 
