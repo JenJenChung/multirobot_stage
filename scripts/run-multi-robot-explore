@@ -40,7 +40,7 @@ pid="$pid $!"
 
 # =========== END ROS simulation nodes =========== 
 
-echo $pid > ~/perception-learning-robotics/src/multirobot_stage/scripts/pid.txt
+echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt
 
 # =========== START Learning epoch timer ===========
 rosparam load $(rospack find multirobot_stage)/scripts/learning_params.yaml
