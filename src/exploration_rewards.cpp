@@ -26,15 +26,17 @@ void ExplorationRewards::mapCallback(const boost::shared_ptr<nav_msgs::Occupancy
   if (_explored_areas.size() > 0) {
     // std::vector<float>::iterator min_area = std::min_element(_explored_areas.begin(), _explored_areas.end());
 
-    auto min_area = std::max_element(_explored_areas.begin(), _explored_areas.end(),
-                                     [](const std::pair<std::string, float> &p1,
-                                        const std::pair<std::string, float> &p2) { return p1.second > p2.second; });
+    // auto min_area = std::max_element(_explored_areas.begin(), _explored_areas.end(),
+    //                                  [](const std::pair<std::string, float> &p1,
+    //                                     const std::pair<std::string, float> &p2) { return p1.second > p2.second; });
     // auto min_area = std::min_element(_explored_areas.begin(), _explored_areas.end(),
     //                                  [](const std::pair<std::string, float> &p1,
     //                                     const std::pair<std::string, float> &p2) { return p1.second < p2.second; });
 
+    auto mean_area = std::accumulate(_explored_areas.begin(), _explored_areas.end(), 0.0) / _explored_areas.size();
+
     std_msgs::Float64 area_msg;
-    area_msg.data = min_area->second;
+    area_msg.data = mean_area->second;
     _pub.publish(area_msg);
     // ROS_INFO("current min area is by %s: %f\n", min_area->first.c_str(), min_area->second);
 
