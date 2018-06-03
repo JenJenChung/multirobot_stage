@@ -66,9 +66,9 @@ class ActionNode{
         std::vector<std::shared_ptr<nav_msgs::Odometry>> odoms_;
 
         tf2_ros::Buffer tfBuffer_;
-        tf2_ros::TransformListener tfListener_; 
+        tf2_ros::TransformListener tfListener_;
 
-        PolicyGrad * policy_;
+        PolicyGrad *policy_;
         runMode mode_;
         runMeth method_;
 
@@ -78,13 +78,16 @@ class ActionNode{
 
         std::default_random_engine generator_;
 
-        void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr&);
-        void odomCallback(const nav_msgs::Odometry::ConstPtr&, std::shared_ptr<nav_msgs::Odometry>);
-        void rewardCallback(const std_msgs::Float64::ConstPtr&);
+        std::string log_dir;
+        std::string action_log_file_name;
 
-        void updatePolicy(Eigen::MatrixXd&, int&);
+        void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &);
+        void odomCallback(const nav_msgs::Odometry::ConstPtr &, std::shared_ptr<nav_msgs::Odometry>);
+        void rewardCallback(const std_msgs::Float64::ConstPtr &);
+
+        void updatePolicy(Eigen::MatrixXd &, int &);
         void savePolicy();
-        move_base_msgs::MoveBaseGoal getGoal(Eigen::MatrixXd&, int&);
+        move_base_msgs::MoveBaseGoal getGoal(Eigen::MatrixXd &, int &);
         void getAction(const Eigen::MatrixXd, int&);
         void actionThread();
         
@@ -205,6 +208,20 @@ ActionNode::ActionNode(ros::NodeHandle n): tfListener_(tfBuffer_) {
     ROS_INFO_STREAM("Robot " << robot_id_ << ": Subscribed to: " << reward_topic);
 
     rec_map_pub_= nh_.advertise<visualization_msgs::MarkerArray>("rec_map",10);
+
+    // initialize log file
+    std::ofstream action_log_file;
+    std::string curEpoch, curEpisode;
+    ros::param::get("/learning/curEpoch", curEpoch);
+    ros::param::get("/learning/curEpisode", curEpisode);
+    ros::param::get("/learning/log_dir", log_dir);
+
+    action_log_file_name = "action_log_robot_" + std::to_string(robot_id_) + '-' + curEpoch + "-" + curEpisode + ".csv";
+    ROS_INFO("=================> ActionNode: writing file to %s\n", action_log_file_name.c_str());
+    action_log_file.open(log_dir + "/" + action_log_file_name, std::ios_base::app);
+    action_log_file << "time";
+      action_log_file << "," + std::to_string(robot_id_) + "_action";
+    action_log_file << std::endl;
 }
     
 void ActionNode::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg){
@@ -312,43 +329,62 @@ move_base_msgs::MoveBaseGoal ActionNode::getGoal(Eigen::MatrixXd &last_state, in
     if (action_index == -1){
         ROS_WARN_STREAM("Robot " << robot_id_ << ": Invalid input/output to neural net (NaN). Performing 0 action.");
         action << 0,0,0;
-    } else if (action_index > -1){
-        // convert NN output to feasible action on the map
-        action(0) = state(action_index,0); // direction to go to
-        action(1) = std::max(state(action_index,2)-clearance_,0.0); // distance to travel into direction (frontier-clearance_ or zero)
-        action(2) = state(action_index,0); // new heading of the robot
+    } else if (action_index > -1) {
+      // convert NN output to feasible action on the map
+      action(0) = state(action_index, 0); // direction to go to
+      action(1) = std::max(state(action_index, 2) - clearance_,
+                           0.0);          // distance to travel into direction (frontier-clearance_ or zero)
+      action(2) = state(action_index, 0); // new heading of the robot
     }
     // ROS_INFO_STREAM("Robot " << robot_id_ << ": Action (Eigen::Vector3d):\n" << action);
-    goal.target_pose.pose = polarToPose(action, current_odom);  // TODO: dereferencing occurring in correct order?
+
+    int robot_move_towards_each_other = 0;
+    for (int r = 0; r < state.rows(); ++r) {
+      if (state(r, 3) != 0) {
+        robot_move_towards_each_other = r;
+      }
+    }
+
+    if (robot_move_towards_each_other == action_index) {
+      ROS_INFO("\n\n=========== robot_move_towards_each_other: %d =====================\n\n",
+               robot_move_towards_each_other);
+    }
+    std::ofstream action_log_file;
+    action_log_file.open(log_dir + "/" + action_log_file_name, std::ios_base::app);
+    action_log_file << ros::Time::now();
+    action_log_file << "," + std::to_string(robot_move_towards_each_other == action_index);
+    action_log_file << std::endl;
+
+    goal.target_pose.pose = polarToPose(action, current_odom); // TODO: dereferencing occurring in correct order?
     return goal;
 }
 
-void ActionNode::getAction(const Eigen::MatrixXd state, int &action_index){
-    // This method outputs an action belonging to a state according to the loaded policy
-    // ROS_INFO("Starting getAction()\n");
-    Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M(state.block(0,1,n_th_,1+n_robots_));
-    Eigen::Map<VectorXd> nn_input(M.data(), M.size());
-    // ROS_INFO("M.size: (%ld, %ld) nn_input.size: (%ld, %ld)\n", M.rows(), M.cols(), nn_input.rows(), nn_input.cols());
-    if (nn_input.maxCoeff()!=0){
-        nn_input = nn_input/nn_input.maxCoeff(); // scale input
-        Eigen::VectorXd nn_output = policy_->EvaluateNNSoftmax(nn_input); // Evaluate the network with the state as input
-        // ROS_INFO_STREAM("Robot " << robot_id_ << ": NN output " << nn_output);
-        // sample from NN output
-        if (std::isnan(nn_output.norm()) || std::isinf(nn_output.norm())){
-            action_index = -1;
-        } else {
-            std::vector<double> weights;
-            for (size_t i = 0; i<nn_output.size(); i++){
-                weights.push_back(nn_output(i));
-            }
-            std::discrete_distribution<int> distr(weights.begin(),weights.end());
-            action_index = distr(generator_);
-            ROS_INFO_STREAM("Robot " << robot_id_ << ": Selecting bearing " << action_index << " with probability " <<
-            nn_output(action_index) << " as action");
-        }
+void ActionNode::getAction(const Eigen::MatrixXd state, int &action_index) {
+  // This method outputs an action belonging to a state according to the loaded policy
+  // ROS_INFO("Starting getAction()\n");
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> M(state.block(0, 1, n_th_, 1 + n_robots_));
+  Eigen::Map<VectorXd> nn_input(M.data(), M.size());
+  // ROS_INFO("M.size: (%ld, %ld) nn_input.size: (%ld, %ld)\n", M.rows(), M.cols(), nn_input.rows(), nn_input.cols());
+  if (nn_input.maxCoeff() != 0) {
+    nn_input = nn_input / nn_input.maxCoeff();                        // scale input
+    Eigen::VectorXd nn_output = policy_->EvaluateNNSoftmax(nn_input); // Evaluate the network with the state as input
+    // ROS_INFO_STREAM("Robot " << robot_id_ << ": NN output " << nn_output);
+    // sample from NN output
+    if (std::isnan(nn_output.norm()) || std::isinf(nn_output.norm())) {
+      action_index = -1;
     } else {
-        action_index = -1;
+      std::vector<double> weights;
+      for (size_t i = 0; i < nn_output.size(); i++) {
+        weights.push_back(nn_output(i));
+      }
+      std::discrete_distribution<int> distr(weights.begin(), weights.end());
+      action_index = distr(generator_);
+      ROS_INFO_STREAM("Robot " << robot_id_ << ": Selecting bearing " << action_index << " with probability "
+                               << nn_output(action_index) << " as action");
     }
+  } else {
+    action_index = -1;
+  }
 }
 
 void ActionNode::actionThread(){
