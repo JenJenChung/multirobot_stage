@@ -1,11 +1,9 @@
 learning:
-  episode_length: 60.0 # length of each episode in seconds
-  #nRob: 1 specified in command line argument
-  nBearings: 100
-  nIn: 200 # nBearings*(nRob+1), required by action node
+  episode_length: 200.0 # length of each episode in seconds
+  nIn: 22 # encoding size + (r,theta) of other robot 
   nOut: 3 # [bearing, distance, orientation], required by action node
-  nHidden: 200
-  nPop: 2
-  nEps: 5
+  nHidden: 64
+  nPop: 10
+  nEps: 500
   actFun: "logistic" #output between 0 and 1, required by action node
   
