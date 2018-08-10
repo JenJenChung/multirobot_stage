@@ -1,0 +1,19 @@
+<launch>
+  <arg name="robot_name" default="/"/>
+  <arg name="robot_index" default="0"/>
+  
+  <group ns="$(arg robot_name)">
+    <rosparam file="$(find multirobot_stage)/scripts/global_map_merge_params.yaml" command="load" ns="comms_map"/>
+    
+    <node pkg="multirobot_stage" type="comms_map" name="comms_map" respawn="false" output="screen">
+      <param name="robot_index" value="$(arg robot_index)"/>
+    </node>
+    
+    <node pkg="multirobot_map_merge" type="map_merge" name="map_merge" respawn="false">
+      <param name="world_frame" value="world"/>
+      <param name="known_init_poses" value="true"/>
+      <param name="merged_map_topic" value="merged_map"/>
+      <param name="robot_namespace" value="/$(arg robot_name)/comms_map"/>
+    </node>
+  </group>
+</launch>

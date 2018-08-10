@@ -14,7 +14,7 @@ define topurg ranger
 
 define erratic position
 (
-  size [0.5 0.35 0.25]
+  size [0.3 0.3 0.25]
   origin [0 0 0 0]
   gui_nose 0
   drive "diff"
@@ -41,7 +41,7 @@ define floorplan model
 )
 
 # set the resolution of the underlying raytrace model in meters
-resolution 0.005
+# resolution 0.005 # this seems to cause transform problems but apparently doesn't need to be set, so best just to leave it to automatically compute the relevant resolution
 
 interval_sim 50  # simulation timestep in milliseconds
 

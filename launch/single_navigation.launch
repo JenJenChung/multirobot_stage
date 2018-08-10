@@ -1,0 +1,14 @@
+<launch>
+  <arg name="robot_name" default="/"/>
+  
+  <group ns="$(arg robot_name)">
+    <include file="$(find multirobot_stage)/launch/move_base.launch">
+      <arg name="cmd_vel_topic" value="controller_cmd_vel"/>
+    </include>
+    
+    <node pkg="simple_navigation_goals" type="map_navigation_client" name="map_goal_client" output="screen"/>
+    
+    <param name="cmd_vel_topic" value="cmd_vel"/>
+    <node pkg="simple_navigation_goals" type="controller_spin_recover" name="move_base_recover" output="screen"/>
+  </group>
+</launch>

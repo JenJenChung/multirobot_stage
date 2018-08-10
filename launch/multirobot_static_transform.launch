@@ -1,6 +1,7 @@
 <launch>
   <arg name="parent_frame" default="map"/>
-  <arg name="child_frame" default="robot_0"/>
+  <arg name="child_ns" default="robot_0"/>
+  <arg name="child_frame" default="$(arg child_ns)/$(arg parent_frame)"/>
   <arg name="dx" default="0"/>
   <arg name="dy" default="0"/>
   <arg name="dz" default="0"/>
@@ -8,5 +9,5 @@
   <arg name="dpitch" default="0"/>
   <arg name="droll" default="0"/>  
   
-  <node respawn="true" pkg="tf" type="static_transform_publisher" name="map_to_$(arg child_frame)" args="$(arg dx) $(arg dy) $(arg dz) $(arg dyaw) $(arg dpitch) $(arg droll) $(arg parent_frame) $(arg child_frame)/$(arg parent_frame) 100"/>
+  <node respawn="true" pkg="tf2_ros" type="static_transform_publisher" name="$(arg parent_frame)_to_$(arg child_ns)" args="$(arg dx) $(arg dy) $(arg dz) $(arg dyaw) $(arg dpitch) $(arg droll) $(arg parent_frame) $(arg child_frame)"/>
 </launch>

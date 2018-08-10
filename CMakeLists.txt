@@ -22,8 +22,23 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   costmap_2d
   actionlib
+  message_generation
+  custom_messages
 )
 find_package(Eigen3 REQUIRED)
+
+# Generate messages in the 'msg' folder
+add_message_files(
+  DIRECTORY
+  FILES
+  RobotPosition.msg
+)
+
+# Generate added messages and services with any dependencies listed here
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -74,3 +89,15 @@ add_dependencies(multiRobotNE ${catkin_EXPORTED_TARGETS})
 add_executable(rewards_node src/exploration_rewards.cpp)
 target_link_libraries(rewards_node ${catkin_LIBRARIES})
 add_dependencies(rewards_node ${catkin_EXPORTED_TARGETS})
+
+add_executable(global_odom src/global_odom.cpp)
+target_link_libraries(global_odom ${catkin_LIBRARIES})
+add_dependencies(global_odom ${catkin_EXPORTED_TARGETS})
+
+add_executable(agent_policy src/agent_policy.cpp)
+target_link_libraries(agent_policy ${catkin_LIBRARIES})
+add_dependencies(agent_policy ${catkin_EXPORTED_TARGETS})
+
+add_executable(comms_map src/comms_map.cpp)
+target_link_libraries(comms_map ${catkin_LIBRARIES})
+add_dependencies(comms_map ${catkin_EXPORTED_TARGETS})

@@ -1,0 +1,17 @@
+num_robots: 2
+comms_range: 8.0
+# setting the initial positions in the world frame to 0.0 seems to always provide a better merging solution
+# providing actual positions in world frame results in map merging offset
+robot_0:
+  map_merge:
+    init_pose_x: 0.0
+    init_pose_y: 0.0
+    init_pose_z: 0.0
+    init_pose_yaw: 0.0
+robot_1:
+  map_merge:
+    init_pose_x: 0.0
+    init_pose_y: 0.0
+    init_pose_z: 0.0
+    init_pose_yaw: 0.0
+

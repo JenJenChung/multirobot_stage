@@ -1,0 +1,20 @@
+#!/bin/bash
+
+my_pid=$$
+echo "My process ID is $my_pid"
+
+echo "Launching navigation stack..."
+for i in `seq 0 1`;
+do
+  roslaunch multirobot_stage single_map_merge.launch robot_name:=robot_$i robot_index:=$i&
+  pid="$pid $!"
+  sleep 2s
+  
+  roslaunch multirobot_stage single_navigation.launch robot_name:=robot_$i &
+  pid="$pid $!"
+  sleep 2s
+done
+
+trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
+
+sleep 24h

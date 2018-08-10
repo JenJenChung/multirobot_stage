@@ -9,21 +9,42 @@ pid=$!
 
 echo "Launching Stage..."
 sleep 2s
-roslaunch multirobot_stage multirobot_stage.launch &
+roslaunch multirobot_stage multirobot_stage.launch world_file:=willow_multi_robot &
 pid="$pid $!"
 
-echo "Launching navigation stack..."
+echo "Launching SLAM stack..."
 sleep 2s
 for i in `seq 0 1`;
 do
-  roslaunch nav_bundle single_slam.launch robot_name:=robot_$i &
+  roslaunch multirobot_stage single_slam.launch robot_name:=robot_$i &
   pid="$pid $!"
-  sleep 2s
+  sleep 1s
   
-  roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
+  roslaunch multirobot_stage multirobot_static_transform.launch child_ns:=robot_$i dx:=0 dy:=0 &
   pid="$pid $!"
-  sleep 2s
+  sleep 1s
+  
+  roslaunch multirobot_stage single_global_odom_transform.launch robot_name:=robot_$i &
+  pid="$pid $!"
+  sleep 1s
 done
+
+sleep 2s
+roslaunch multirobot_stage multirobot_static_transform.launch parent_frame:=world child_ns:=map child_frame:=map dx:="$(rosparam get /robot_0/gmapping/xmax)" dy:="$(rosparam get /robot_0/gmapping/ymax)" &
+pid="$pid $!"
+
+#echo "Launching navigation stack..."
+#sleep 2s
+#for i in `seq 0 1`;
+#do
+#  roslaunch multirobot_stage single_map_merge.launch robot_name:=robot_$i robot_index:=$i&
+#  pid="$pid $!"
+#  sleep 2s
+#  
+#  roslaunch multirobot_stage single_navigation.launch robot_name:=robot_$i &
+#  pid="$pid $!"
+#  sleep 2s
+#done
 
 trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
 
