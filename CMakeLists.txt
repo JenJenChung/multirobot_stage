@@ -101,3 +101,7 @@ add_dependencies(agent_policy ${catkin_EXPORTED_TARGETS})
 add_executable(comms_map src/comms_map.cpp)
 target_link_libraries(comms_map ${catkin_LIBRARIES})
 add_dependencies(comms_map ${catkin_EXPORTED_TARGETS})
+
+add_executable(merged_map_republisher src/merged_map_republisher.cpp)
+target_link_libraries(merged_map_republisher ${catkin_LIBRARIES})
+add_dependencies(merged_map_republisher ${catkin_EXPORTED_TARGETS})

@@ -23,12 +23,14 @@ class CommsMap{
     void poseCallback(const nav_msgs::Odometry&) ;
     double euclideanDistance(vector<double>, vector<double>) ;
     
-    size_t r_idx ;                      // this robot index
-    size_t n_robots ;                   // number of robots
-    double comms_range ;                // communication range
-    vector< vector<double> > r_poses ;  // latest true pose
-    vector<bool> f_pose ;               // true if first true pose has been received
-    vector<bool> f_map ;                // always share first map
+    size_t r_idx ;                              // this robot index
+    size_t n_robots ;                           // number of robots
+    double comms_range ;                        // communication range
+    vector< vector<double> > r_poses ;          // latest true pose
+    vector<bool> f_pose ;                       // true if first true pose has been received
+    vector<bool> f_map ;                        // true if latest maps need to be published
+    vector<bool> f_map0 ;                       // true if first map need to be published
+    vector<nav_msgs::OccupancyGrid> shared_map ;// latest maps
 } ;
 
 CommsMap::CommsMap(ros::NodeHandle nh){
@@ -56,17 +58,17 @@ CommsMap::CommsMap(ros::NodeHandle nh){
     pub_shared_maps_.push_back(nh.advertise<nav_msgs::OccupancyGrid>(buffer, 10, true)) ;
     
     f_pose.push_back(false) ;
-  
-    f_map.push_back(true) ;
+    f_map.push_back(false) ;
+    f_map0.push_back(true) ;
     
     r_poses.push_back(vector<double>(2,0.0)) ;
+    nav_msgs::OccupancyGrid tmp ;
+    shared_map.push_back(tmp) ;
   }
 }
 
 void CommsMap::mapCallback(const nav_msgs::OccupancyGrid& msg){
-  nav_msgs::OccupancyGrid shared_map = msg ;
-  
-  string frame_id = shared_map.header.frame_id ;
+  string frame_id = msg.header.frame_id ;
   string delim("/") ;
   
   size_t j ;
@@ -89,22 +91,12 @@ void CommsMap::mapCallback(const nav_msgs::OccupancyGrid& msg){
     char key[50] ;
     sprintf(key, "%lu", i) ;
     if (frame_id.compare(j,n_len,key) == 0){
-      if (!f_map[i]){
-        if (f_pose[i] && f_pose[r_idx]){ // if ground truth poses available for both robots
-          double d = euclideanDistance(r_poses[i], r_poses[r_idx]) ;
-          
-          if (d <= comms_range){ // if within comms range
-            if (i != r_idx){
-              ROS_INFO_STREAM("robot_" << r_idx << ": Receiving map from robot_" << i ) ;
-            }
-            pub_shared_maps_[i].publish(shared_map) ;
-            break ;
-          }
-        }
-      }
-      else{ // always share first map
+      shared_map[i] = msg ;
+      f_map[i] = true ; // new map recorded and needs to be published when within range
+      if (f_map0[i]){ // always share the first map
         ROS_INFO_STREAM("robot_" << r_idx << ": Sharing first map from robot_" << i ) ;
-        pub_shared_maps_[i].publish(shared_map) ;
+        pub_shared_maps_[i].publish(shared_map[i]) ;
+        f_map0[i] = false ;
         f_map[i] = false ;
         break ;
       }
@@ -142,9 +134,22 @@ void CommsMap::poseCallback(const nav_msgs::Odometry& msg){
         f_pose[i] = true ;
       }
       
+      if (f_pose[i] && f_pose[r_idx]){ // if ground truth poses available for both robots
+        double d = euclideanDistance(r_poses[i], r_poses[r_idx]) ;
+        
+        if (d <= comms_range && f_map[i]){ // if within comms range and need to share map
+          if (i != r_idx){
+            ROS_INFO_STREAM("robot_" << r_idx << ": Receiving map from robot_" << i ) ;
+          }
+          pub_shared_maps_[i].publish(shared_map[i]) ;
+          f_map[i] = false ; // latest map has been published
+        }
+      }
       break ;
     }
   }
+  
+  
 }
 
 double CommsMap::euclideanDistance(vector<double> a, vector<double> b){

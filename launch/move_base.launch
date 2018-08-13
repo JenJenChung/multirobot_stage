@@ -6,7 +6,7 @@
     <rosparam file="$(find multirobot_stage)/scripts/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find multirobot_stage)/scripts/global_costmap_params.yaml" command="load" />
     <rosparam file="$(find multirobot_stage)/scripts/base_local_planner_params.yaml" command="load" />
-    <remap from="map" to="merged_map"/>
+    <remap from="map" to="raw_merged_map"/>
     <remap from="cmd_vel" to="$(arg cmd_vel_topic)"/>
   </node>
 </launch>

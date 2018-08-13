@@ -471,7 +471,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Robot0_merged_map
-      Topic: /robot_0/merged_map
+      Topic: /robot_0/raw_merged_map
       Unreliable: false
       Use Timestamp: false
       Value: true
@@ -481,7 +481,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Robot1_merged_map
-      Topic: /robot_1/merged_map
+      Topic: /robot_1/raw_merged_map
       Unreliable: false
       Use Timestamp: false
       Value: true

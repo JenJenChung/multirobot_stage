@@ -1,5 +1,7 @@
 #!/bin/bash
 
+N_ROBOTS=$1
+
 my_pid=$$
 echo "My process ID is $my_pid"
 
@@ -12,9 +14,9 @@ sleep 2s
 roslaunch multirobot_stage multirobot_stage.launch world_file:=willow_multi_robot &
 pid="$pid $!"
 
-echo "Launching SLAM stack..."
+echo "Launching SLAM stack for $N_ROBOTS robots..."
 sleep 2s
-for i in `seq 0 1`;
+for i in `seq 0 $[N_ROBOTS-1]`;
 do
   roslaunch multirobot_stage single_slam.launch robot_name:=robot_$i &
   pid="$pid $!"
@@ -33,6 +35,7 @@ sleep 2s
 roslaunch multirobot_stage multirobot_static_transform.launch parent_frame:=world child_ns:=map child_frame:=map dx:="$(rosparam get /robot_0/gmapping/xmax)" dy:="$(rosparam get /robot_0/gmapping/ymax)" &
 pid="$pid $!"
 
+# Following nodes split out into run-multi-robot-sim-nav
 #echo "Launching navigation stack..."
 #sleep 2s
 #for i in `seq 0 1`;

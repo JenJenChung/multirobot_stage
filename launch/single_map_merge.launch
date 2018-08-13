@@ -12,8 +12,10 @@
     <node pkg="multirobot_map_merge" type="map_merge" name="map_merge" respawn="false">
       <param name="world_frame" value="world"/>
       <param name="known_init_poses" value="true"/>
-      <param name="merged_map_topic" value="merged_map"/>
+      <param name="merged_map_topic" value="raw_merged_map"/>
       <param name="robot_namespace" value="/$(arg robot_name)/comms_map"/>
     </node>
+    
+    <node pkg="multirobot_stage" type="merged_map_republisher" name="merged_map_republisher" respawn="true"/>
   </group>
 </launch>
