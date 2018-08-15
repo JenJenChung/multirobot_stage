@@ -56,6 +56,7 @@ void GlobalOdom::odomCallback(const nav_msgs::Odometry& msg){
     nav_msgs::Odometry msg_out ;
     msg_out.pose.pose = pose_out.pose ;
     msg_out.header = pose_out.header ;
+    msg_out.child_frame_id = odom_frame ;
     pub_global_odom_.publish(msg_out) ;
   }
   catch (tf2::TransformException &ex){

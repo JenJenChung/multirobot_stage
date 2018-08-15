@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <math.h>
 #include <Eigen/Eigen>
 
@@ -19,6 +20,7 @@
 using namespace Eigen ;
 using std::vector ;
 using std::string ;
+using std::any_of ;
 
 class AgentPolicy{
   public:
@@ -43,6 +45,8 @@ class AgentPolicy{
     int num_agents ;      // total number of agents
     int r_idx ;           // this agent's index
     string root_ns ;      // root namespace, default "robot"
+    int frame_size ;      // autoencoder local map frame size
+    double map_res ;      // local map resolution
     
     nav_msgs::Odometry global_odom ;  // latest odometry in global frame
     vector<double> agent_state ;      // [map encoding, relative poses]
@@ -51,13 +55,16 @@ class AgentPolicy{
     bool f_slam ;           // first global position has been received
     bool f_map ;            // first map encoding has been received
     vector<bool> f_poses ;  // first set of relative poses has been received
+    bool f_ac ;             // send first move_base action result to get things going
 } ;
 
 AgentPolicy::AgentPolicy(ros::NodeHandle nh){
-  ros::param::get("encoding_size", code_size) ;
-  ros::param::get("num_agents", num_agents) ;
-  ros::param::get("root_namespace", root_ns) ;
+  ros::param::get("/encoding_size", code_size) ;
+  ros::param::get("/num_agents", num_agents) ;
+  ros::param::get("/root_namespace", root_ns) ;
   ros::param::get("robot_index", r_idx) ;
+  ros::param::get("/frame_size", frame_size) ;
+  ros::param::get("/map_resolution", map_res) ;
   
   ROS_INFO_STREAM("Initialising policy for " << root_ns << "_" << r_idx << "...") ;
   
@@ -70,7 +77,7 @@ AgentPolicy::AgentPolicy(ros::NodeHandle nh){
   for (int i = 0; i < num_agents; i++){
     if (i != r_idx){
       char buffer[50] ;
-      sprintf(buffer, "/%s_%i/position", root_ns.c_str(), i) ;
+      sprintf(buffer, "comms_map/%s_%i/position", root_ns.c_str(), i) ;
       sub_rob_pose_.push_back(nh.subscribe(buffer, 10, &AgentPolicy::robPoseCallback, this)) ;
     }
   }
@@ -91,7 +98,7 @@ AgentPolicy::AgentPolicy(ros::NodeHandle nh){
   size_t num_out = 2 ; // [true bearing, distance]
   size_t num_hidden = agent_state_size * 2 ;
   
-  NNPolicy = new NeuralNet(agent_state_size, num_out, num_hidden, LOGISTIC) ;
+  NNPolicy = new NeuralNet(agent_state_size, num_out, num_hidden, TANH) ;
   
   // NN weights
   vector<double> AA, BB ;
@@ -129,6 +136,8 @@ AgentPolicy::AgentPolicy(ros::NodeHandle nh){
     }
   }
   ROS_INFO_STREAM("  " << root_ns << "_" << r_idx << ": NN policy initialised!") ;
+  
+  f_ac = true ;
 }
 
 AgentPolicy::~AgentPolicy(){
@@ -141,6 +150,12 @@ void AgentPolicy::globalOdomCallback(const nav_msgs::Odometry& msg){
   if (!f_slam){
     f_slam = true ;
   }
+  
+  if (f_ac){
+    move_base_msgs::MoveBaseActionResult first_ac ;
+    first_ac.status.status = 3 ;
+    waypointCallback(first_ac) ;
+  }
 }
 
 void AgentPolicy::mapCodeCallback(const map_preprocessor::MapEncoding& msg){
@@ -149,6 +164,12 @@ void AgentPolicy::mapCodeCallback(const map_preprocessor::MapEncoding& msg){
   }
   if (!f_map){
     f_map = true ;
+  }
+  
+  if (f_ac){
+    move_base_msgs::MoveBaseActionResult first_ac ;
+    first_ac.status.status = 3 ;
+    waypointCallback(first_ac) ;
   }
 }
 
@@ -172,21 +193,27 @@ void AgentPolicy::robPoseCallback(const multirobot_stage::RobotPosition& msg){
   if (!f_poses[i]){
     f_poses[i] = true ;
   }
+  
+  if (f_ac){
+    move_base_msgs::MoveBaseActionResult first_ac ;
+    first_ac.status.status = 3 ;
+    waypointCallback(first_ac) ;
+  }
 }
 
 void AgentPolicy::waypointCallback(const move_base_msgs::MoveBaseActionResult& msg){
   if (msg.status.status == 2 || msg.status.status == 4 || msg.status.status == 5 || msg.status.status == 6){ // waypoint was preempted or aborted
-    ROS_INFO_STREAM(root_ns << "_" << r_idx << "Unable to reach waypoint! Selecting new waypoint...") ;
+    ROS_INFO_STREAM(root_ns << "_" << r_idx << ": Unable to reach waypoint! Selecting new waypoint...") ;
   }
   
   // Check all necessary data is available
   if (!f_slam){
-    ROS_INFO_STREAM(root_ns << "_" << r_idx << "No odometry received yet! Waiting for first global_odom message...") ;
+    ROS_INFO_STREAM(root_ns << "_" << r_idx << ": No odometry received yet! Waiting for first global_odom message...") ;
     return ;
   }
   
   if (!f_map){
-    ROS_INFO_STREAM(root_ns << "_" << r_idx << "No map received yet! Waiting for first map message...") ;
+    ROS_INFO_STREAM(root_ns << "_" << r_idx << ": No map received yet! Waiting for first map message...") ;
     return ;
   }
   
@@ -228,7 +255,10 @@ void AgentPolicy::waypointCallback(const move_base_msgs::MoveBaseActionResult& m
   Vector2d action = NNPolicy->EvaluateNN(input_state) ;
   
   // Convert to global coordinate frame
-  vector<double> p = polarToPoint(action) ;
+//  vector<double> p = polarToPoint(action) ;
+  vector<double> p ;
+  p.push_back(action(0)*map_res*frame_size/2.0) ;
+  p.push_back(action(1)*map_res*frame_size/2.0) ;
   
   geometry_msgs::Twist waypoint ;
   
@@ -240,11 +270,16 @@ void AgentPolicy::waypointCallback(const move_base_msgs::MoveBaseActionResult& m
   waypoint.angular.z = 0 ;
   
   pub_map_goal_.publish(waypoint) ;
+  
+  if (f_ac){
+    f_ac = false ;
+  }
 }
 
 vector<double> AgentPolicy::polarToPoint(Vector2d a){
   vector<double> p ;
-  p.push_back(a[0] * cos(a[1])) ;
-  p.push_back(a[0] * sin(a[1])) ;
+  // Rescale first element from [-1,1] to [0,2]
+  p.push_back((a[0] + 1.0) * cos(a[1])) ;
+  p.push_back((a[0] + 1.0) * sin(a[1])) ;
   return p ;
 }
