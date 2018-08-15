@@ -1,0 +1,11 @@
+#!/bin/bash
+
+xterm -hold -e "rosrun multirobot_stage run-multi-robot-sim 2" &
+sleep 12s
+xterm -hold -e "rosrun multirobot_stage run-multi-robot-nav 2" &
+sleep 8s
+xterm -hold -e "rosrun map_preprocessor run-multi-robot-map-encoder 2" &
+
+trap "echo Killing all processes.; exit" SIGINT SIGTERM
+
+sleep 24h

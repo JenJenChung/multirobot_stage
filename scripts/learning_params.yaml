@@ -1,9 +1,15 @@
-episode_length: 200.0 # length of each episode in seconds
-nPop: 10
-nEps: 500
-encoding_size: 20 # must match actual encoding size used in map_preprocessor
-num_agents: 2
-root_namespace: robot
+headless: false        # run simulation headless
+episode_length: 300.0 # length of each episode in seconds
+nPop: 10              # neuro-evo population size
+nEps: 100             # number of learning episodes
+encoding_size: 20     # must match actual encoding size used in map_preprocessor
+num_agents: 2         # number of agents in team
+frame_size: 256       # local map frame size (must match value in autoencoder_params.yaml)
+map_resolution: 0.05  # local map resolution
+root_namespace: robot # root namespace of agents
+results_folder: /home/jenjen/catkin_ws/src/multirobot_stage/results/
+results_file: team_eval.csv
+nn_file: weights.csv
 
 # Defined values:
 #  nIn: encoding size + (r,theta) of other robot

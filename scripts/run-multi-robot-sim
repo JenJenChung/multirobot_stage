@@ -1,6 +1,7 @@
 #!/bin/bash
 
 N_ROBOTS=$1
+HEADLESS=$2
 
 my_pid=$$
 echo "My process ID is $my_pid"
@@ -9,10 +10,17 @@ echo "Launching roscore..."
 roscore &
 pid=$!
 
-echo "Launching Stage..."
 sleep 2s
-roslaunch multirobot_stage multirobot_stage.launch world_file:=willow_multi_robot &
-pid="$pid $!"
+if [ $HEADLESS == "1" ]
+then
+  echo "Launching stage headless with $N_ROBOTS robots..."
+  roslaunch multirobot_stage multirobot_stage_headless.launch world_file:=willow_multi_robot &
+  pid="$pid $!"
+else
+  echo "Launching stage with $N_ROBOTS robots..."
+  roslaunch multirobot_stage multirobot_stage.launch world_file:=willow_multi_robot &
+  pid="$pid $!"
+fi
 
 echo "Launching SLAM stack for $N_ROBOTS robots..."
 sleep 2s

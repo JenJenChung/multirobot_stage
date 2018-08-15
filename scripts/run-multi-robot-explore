@@ -3,41 +3,96 @@
 # =========== START ROS simulation nodes =========== 
 N_ROBOTS=$1
 HEADLESS=$2
+
+sleep 1s
+
+echo "===== Launching ROS simulation and frame transforms... ====="
+#rosrun multirobot_stage run-multi-robot-sim $N_ROBOTS $HEADLESS &
+#pid=$!
+
 if [ $HEADLESS == "1" ]
 then
-  roslaunch multirobot_stage multirobot_stage_headless.launch &
+  echo "Launching stage headless with $N_ROBOTS robots..."
+  roslaunch multirobot_stage multirobot_stage_headless.launch world_file:=willow_multi_robot &
   pid=$!
-  echo "Launching Stage (headless) with $N_ROBOTS robots..."
 else
-  roslaunch multirobot_stage multirobot_stage.launch &
+  echo "Launching stage with $N_ROBOTS robots..."
+  roslaunch multirobot_stage multirobot_stage.launch world_file:=willow_multi_robot &
   pid=$!
-  echo "Launching Stage with $N_ROBOTS robots..."
 fi
 
-echo "Launching navigation stack..."
-sleep 2s
+echo "Launching SLAM stack for $N_ROBOTS robots..."
+sleep 1s
 for i in `seq 0 $[N_ROBOTS-1]`;
 do
-  roslaunch nav_bundle single_slam.launch robot_name:=robot_$i &
+  roslaunch multirobot_stage single_slam.launch robot_name:=robot_$i &
   pid="$pid $!"
+  sleep 1s
   
-  roslaunch multirobot_stage multirobot_static_transform.launch child_frame:=robot_$i &
+  roslaunch multirobot_stage multirobot_static_transform.launch child_ns:=robot_$i dx:=0 dy:=0 &
   pid="$pid $!"
-
-  roslaunch multirobot_stage multirobot_map_merge.launch robot_name:=robot_$i &
+  sleep 1s
+  
+  roslaunch multirobot_stage single_global_odom_transform.launch robot_name:=robot_$i &
   pid="$pid $!"
-
-  roslaunch multirobot_stage action_node.launch robot_id:=$i &
-  pid="$pid $!"
+  sleep 1s
 done
 
+roslaunch multirobot_stage multirobot_static_transform.launch parent_frame:=world child_ns:=map child_frame:=map dx:="$(rosparam get /robot_0/gmapping/xmax)" dy:="$(rosparam get /robot_0/gmapping/ymax)" &
+pid="$pid $!"
+
+echo "===== Launching navigation stack... ====="
+#sleep 12s
+#rosrun multirobot_stage run-multi-robot-nav $N_ROBOTS &
+#pid="$pid $!"
+
+echo "Launching navigation stack for $N_ROBOTS robots..."
+for i in `seq 0 $[N_ROBOTS-1]`;
+do
+  roslaunch multirobot_stage single_map_merge.launch robot_name:=robot_$i robot_index:=$i&
+  pid="$pid $!"
+  sleep 1s
+  
+  roslaunch multirobot_stage single_navigation.launch robot_name:=robot_$i &
+  pid="$pid $!"
+  sleep 1s
+done
+
+echo "===== Launching local map encoders... ====="
+#sleep 8s
+#rosrun map_preprocessor run-multi-robot-map-encoder $N_ROBOTS &
+#pid="$pid $!"
+
+source `which virtualenvwrapper.sh`
+workon marl-coop-explore-py3
+
+echo "Launching autoencoder stack for $N_ROBOTS robots..."
+for i in `seq 0 $[N_ROBOTS-1]`;
+do
+  roslaunch map_preprocessor autoencoder.launch robot_name:=robot_$i map_topic:=merged_map odom_topic:=global_odom &
+  pid="$pid $!"
+  sleep 1s
+done
+
+echo "===== Launching agent policies... ====="
+#sleep 4s
+#rosrun multirobot_stage run-agent-policies $N_ROBOTS &
+#pid="$pid $!"
+
+echo "Launching policies for $N_ROBOTS robots..."
+for i in `seq 0 $[N_ROBOTS-1]`;
+do
+  roslaunch multirobot_stage single_agent_policy.launch robot_name:=robot_$i robot_index:=$i &
+  pid="$pid $!"
+  sleep 1s
+done
+
+echo "===== Launching reward calculator... ====="
+sleep 1s
 roslaunch multirobot_stage rewards_node.launch nRob:=$N_ROBOTS &
 pid="$pid $!"
 
-rosrun multirobot_stage comms_node &
-pid="$pid $!"
-
-# =========== END ROS simulation nodes =========== 
+# =========== END ROS simulation nodes ===========
 
 echo $pid > ~/catkin_ws/src/multirobot_stage/scripts/pid.txt
 

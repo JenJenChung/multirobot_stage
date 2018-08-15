@@ -1,8 +1,10 @@
 <launch>
   <arg name="robot_name"/>
+  <arg name="robot_index"/>
   
   <group ns="$(arg robot_name)">
-    <rosparam load="$(rospack find multirobot_stage)/scripts/learning_params.yaml"/>
-    <node pkg="multirobot_stage" type="agent_policy" name="agent_policy" output="screen"/>
+    <param name="robot_index" value="$(arg robot_index)" type="int"/>
+    <node pkg="multirobot_stage" type="agent_policy" name="agent_policy" output="screen">
+    </node>
   </group>
 </launch>

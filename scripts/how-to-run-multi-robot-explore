@@ -1,0 +1,41 @@
+# How to run multi-robot exploration
+# Terminal 1
+#   - starts roscore
+#   - creates stage simulation and sets up all transforms
+#     - slam-gmapping nodes for each robot (transform /robot_X/odom to /robot_X/map)
+#     - static transforms between robots (/robot_X/map to /map)
+#     - convert local odom to global odom for each robot
+#     - static transform between world and map frames (/map to /world)
+
+rosrun multirobot_stage run-multi-robot-sim $N_ROBOTS $HEADLESS
+
+
+# Terminal 2
+#   - local map merging nodes
+#     - comms_map (comms_map/robot_X/map, comms_map/robot_x/position)
+#     - map_merge
+#     - republisher (raw_merged_map for move_base, merged_map for agent policy)
+#   - navigation nodes
+#     - move_base
+#     - move_base map_goal client
+#     - spin recovery
+
+rosrun multirobot_stage run-multi-robot-nav $N_ROBOTS
+
+##### Multi-robot learning to explore #####
+
+# Terminal 3
+#   - extracts local map state
+#   - encodes map according to specified autoencoder
+
+rosrun map_preprocessor run-multi-robot-map-encoder $N_ROBOTS
+
+# Terminal 4
+#   - launches policies for all robots
+
+rosrun multirobot_stage run-agent-policies $N_ROBOTS
+
+# Terminal 5
+#   - launch reward node
+
+roslaunch multirobot_stage rewards_node.launch nRob:=$N_ROBOTS

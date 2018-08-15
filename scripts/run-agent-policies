@@ -1,0 +1,18 @@
+#!/bin/bash
+
+N_ROBOTS=$1
+
+my_pid=$$
+echo "My process ID is $my_pid"
+
+echo "Launching policies for $N_ROBOTS robots..."
+for i in `seq 0 $[N_ROBOTS-1]`;
+do
+  roslaunch multirobot_stage single_agent_policy.launch robot_name:=robot_$i robot_index:=$i &
+  pid="$pid $!"
+  sleep 1s
+done
+
+trap "echo Killing all processes.; kill -2 TERM $pid; exit" SIGINT SIGTERM
+
+sleep 24h
